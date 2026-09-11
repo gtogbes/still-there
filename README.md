@@ -16,8 +16,8 @@ paper by ten past, and in the kitchen by half past. Then one Tuesday none of tha
 happens, and her daughter gets a message at work: *no sign of activity yet today,
 usually by 08:21, it's now 11:30.* Not an alarm. A nudge, with its reasoning attached.
 
-No indoor cameras. No live feed to watch. No new hardware — it runs on the doorbell
-already screwed to the wall.
+No live feed to watch, no footage reviewed by default, and no professionally installed
+sensor kit — it runs on Ring hardware people already own.
 
 ## Honest positioning: this category exists
 
@@ -154,6 +154,32 @@ src/testing/      synthetic household harness
   rng.ts          seeded PRNG, so measurements are comparable across runs
 tests/
 ```
+
+## Known unknowns
+
+Recorded honestly, because these decide whether the design survives contact with the
+real API.
+
+**Does Ring emit a door-opening event?** The occupancy model currently treats
+`door_open` as strong evidence, but Ring's documented camera events are motion,
+doorbell presses and device status, and the Playground simulates Package, Vehicle and
+Motion. There may be no `door_open` for a camera or doorbell at all — it may require
+Ring Alarm contact sensors, which is extra hardware we do not want to depend on. First
+job against the live API is to enumerate the actual event types and, if `door_open` is
+not among them, drop it from the occupancy predicate and lean entirely on interior
+motion.
+
+**A doorbell alone is not enough.** Under our own model, a doorbell facing the street
+produces exterior motion, which is explicitly *not* occupancy evidence. Absence
+detection needs at least one interior zone, so the cheap plug-in Indoor Camera is the
+load-bearing device here and the doorbell is the optional extra. Worth stating plainly
+rather than letting the "runs on hardware you already own" line do more work than it
+has earned.
+
+**Is a paid subscription required?** Reviewing recorded video needs a Ring plan, but
+this system consumes event metadata from webhooks and builds its own rolling history,
+so it may need no subscription at all. If that holds it is a real advantage worth
+making explicit in the submission. Needs confirming against a live account.
 
 ## Not built yet
 
