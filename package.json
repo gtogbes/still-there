@@ -14,11 +14,18 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run test",
     "check:creds": "node scripts/check-credentials.mjs",
-    "check:creds:live": "node scripts/check-credentials.mjs --live"
+    "check:creds:live": "node scripts/check-credentials.mjs --live",
+    "build:lambda": "node scripts/build-lambda.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
+    "esbuild": "^0.28.2",
     "typescript": "5.9.3",
     "vitest": "3.2.4"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1137.0",
+    "@aws-sdk/client-secrets-manager": "^3.1137.0",
+    "@aws-sdk/lib-dynamodb": "^3.1137.0"
   }
 }

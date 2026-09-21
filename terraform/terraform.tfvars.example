@@ -1,0 +1,20 @@
+# Copy to terraform.tfvars and adjust. Contains no secrets — Ring credentials go
+# into Secrets Manager by hand after the first apply, so they never touch state.
+
+region      = "us-east-1"
+environment = "dev"
+owner       = "gtogbes"
+cost_center = "hackathon"
+
+# The single household this deployment serves. A deliberate simplification for a
+# private app with one user.
+household_id = "household-primary"
+
+# Where the Account Link endpoint sends a user to sign in. Points at the repo until
+# there is a real sign-in page, so the redirect is honest rather than broken.
+sign_in_url = "https://github.com/gtogbes/still-there"
+
+log_retention_days = 30
+
+# Optional. Set an address to receive the two alarms, leave empty to skip SNS.
+alarm_email = ""

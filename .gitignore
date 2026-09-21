@@ -1,6 +1,16 @@
 node_modules/
 dist/
 coverage/
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+tfplan
+terraform/.build/
+crash.log
 .env
 .env.*
 !.env.example
