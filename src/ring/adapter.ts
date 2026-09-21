@@ -1,79 +1,122 @@
-import type { ActivityEvent, ActivityKind, DeviceHealthSample } from '../domain/types.js';
+import type {
+  ActivityEvent,
+  ActivityKind,
+  DeviceHealthSample,
+  MotionSubject,
+} from '../domain/types.js';
 import { zoneForDevice, type DeviceRegistry } from './devices.js';
 
 /**
  * The seam between Ring's wire format and our domain.
  *
- * Everything downstream of here speaks ActivityEvent and DeviceHealthSample and
- * knows nothing about Ring. That is the point: the payload shapes below are
- * still provisional, inferred from the developer documentation rather than
- * captured from a live webhook, and when they turn out to be wrong the change
- * lands in this one file.
+ * Everything downstream speaks ActivityEvent and DeviceHealthSample and knows
+ * nothing about Ring. Field paths below are taken from Ring's webhook v1.1
+ * specification rather than inferred — an earlier version of this file guessed a
+ * flat payload and was wrong about almost every name.
  *
- * Deliberately diagnostic rather than tolerant. It would be easy to accept half
- * a dozen field aliases and quietly coerce whatever arrives, and we would then
- * never find out what Ring actually sends. Instead an unrecognised payload comes
- * back as 'invalid' listing the keys it did contain, so the first failed webhook
- * tells us the real shape.
+ * Ring uses two different vocabularies for the same events, which is worth
+ * knowing before reading further: webhooks say `motion_detected` and
+ * `button_press`, while the Event History API says `motion` and `ding`. Both are
+ * handled here, kept apart deliberately.
  */
 
 export type AdaptResult<T> =
   | { readonly outcome: 'ok'; readonly value: T }
   /** Understood, but not something this product reasons about. Acknowledge and move on. */
   | { readonly outcome: 'ignored'; readonly reason: string }
-  /** Could not be understood. Acknowledge to Ring, but alert ourselves. */
+  /** Could not be understood. Still acknowledge to Ring, but alert ourselves. */
   | { readonly outcome: 'invalid'; readonly reason: string };
 
-/**
- * Ring event type names mapped to our vocabulary.
- *
- * Scope groups requested for this app are Cameras and Doorbells (motion,
- * doorbell presses) and Contact Sensors (door open/close), plus the Account and
- * Lifecycle events every app receives automatically.
- */
+/** What the webhook envelope carries beyond the event itself. */
+export interface EnvelopeContext {
+  /** Deduplication key. Ring may deliver the same detection more than once. */
+  readonly requestId: string;
+  /** Identifies which linked Ring user the event belongs to. */
+  readonly accountId: string;
+  readonly eventId: string;
+}
+
+export interface AdaptedActivity {
+  readonly event: ActivityEvent;
+  readonly context: EnvelopeContext;
+}
+
+export interface AdaptedHealth {
+  readonly sample: DeviceHealthSample;
+  readonly context: EnvelopeContext;
+}
+
+/** Webhook `data.type` values that describe someone moving about. */
 const ACTIVITY_KINDS: Readonly<Record<string, ActivityKind>> = {
-  motion: 'motion',
   motion_detected: 'motion',
-  ding: 'doorbell',
-  doorbell_press: 'doorbell',
-  contact_open: 'door_open',
-  door_opened: 'door_open',
-  package_detected: 'package',
-  vehicle_detected: 'vehicle',
+  button_press: 'doorbell',
+  // Counter-intuitive but documented: "faulted" means the contact is open.
+  // Read the attribute, not the name.
+  contact_sensor_faulted: 'door_open',
+  contact_sensor_cleared: 'door_closed',
+  tamper_detected: 'tamper',
 };
 
+/** Ring's motion classifications mapped to ours. */
+const MOTION_SUBJECTS: Readonly<Record<string, MotionSubject>> = {
+  human: 'human',
+  vehicle: 'vehicle',
+  other_motion: 'other',
+  motion: 'unspecified',
+};
+
+const DEVICE_STATUS_TYPES: readonly string[] = ['device_online', 'device_offline'];
+
 /**
- * Events we expect to receive and deliberately do nothing with.
+ * Events we expect and deliberately discard.
  *
- * Listed explicitly so they come back as 'ignored' rather than 'invalid'. The
- * difference matters operationally: 'invalid' should wake somebody, and a
- * subscription renewal notice should not.
+ * Enumerated rather than caught by a default branch, so a genuinely unknown type
+ * still surfaces as 'invalid'. The distinction is operational: 'invalid' should
+ * alert somebody, and a subscription renewal should not.
  */
 const IGNORED_TYPES: readonly string[] = [
-  'contact_closed',
-  'door_closed',
-  'subscription_changed',
-  'integration_enabled',
-  'integration_disabled',
-  'livestream_started',
-  'livestream_ended',
+  'tamper_cleared',
+  'device_added',
+  'device_removed',
+  'subscription_activated',
+  'subscription_deactivated',
+  'app_integration_added',
+  'app_integration_removed',
+  'flood_detected',
+  'flood_cleared',
+  'freeze_detected',
+  'freeze_cleared',
+  'temperature_exceeded',
+  'temperature_cleared',
+  'humidity_exceeded',
+  'humidity_cleared',
+  'pm25_exceeded',
+  'pm25_cleared',
+  'co_exceeded',
+  'co_cleared',
 ];
 
-const DEVICE_STATUS_TYPES: readonly string[] = ['device_online', 'device_offline', 'device_status'];
-
-function keysOf(payload: unknown): string {
+function describeShape(payload: unknown): string {
   if (typeof payload !== 'object' || payload === null) return typeof payload;
   return Object.keys(payload as Record<string, unknown>).join(', ') || '(no keys)';
 }
 
-function readString(payload: Record<string, unknown>, key: string): string | undefined {
-  const value = payload[key];
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function readString(source: Record<string, unknown> | undefined, key: string): string | undefined {
+  if (source === undefined) return undefined;
+  const value = source[key];
   return typeof value === 'string' && value !== '' ? value : undefined;
 }
 
-/** Accepts an ISO-8601 string or epoch milliseconds. Rejects anything else. */
-function readInstant(payload: Record<string, unknown>, key: string): number | undefined {
-  const value = payload[key];
+/** Accepts epoch milliseconds or an ISO-8601 string. */
+function readInstant(source: Record<string, unknown> | undefined, key: string): number | undefined {
+  if (source === undefined) return undefined;
+  const value = source[key];
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
     const parsed = Date.parse(value);
@@ -82,77 +125,155 @@ function readInstant(payload: Record<string, unknown>, key: string): number | un
   return undefined;
 }
 
-export function adaptActivityEvent(
-  payload: unknown,
-  registry: DeviceRegistry,
-): AdaptResult<ActivityEvent> {
-  if (typeof payload !== 'object' || payload === null) {
-    return { outcome: 'invalid', reason: `expected an object, received ${keysOf(payload)}` };
-  }
-  const body = payload as Record<string, unknown>;
+interface Envelope {
+  readonly eventType: string;
+  readonly deviceId: string;
+  readonly at: number;
+  readonly context: EnvelopeContext;
+  readonly data: Record<string, unknown>;
+}
 
-  const type = readString(body, 'eventType') ?? readString(body, 'type');
-  if (type === undefined) {
+/**
+ * Unpacks the v1.1 envelope shared by every Ring webhook.
+ *
+ * Diagnostic on purpose. A tolerant reader that accepted several field spellings
+ * would have hidden the fact that this file was previously wrong; instead an
+ * unrecognised payload reports the keys it actually contained, so one failed
+ * delivery tells us what changed.
+ */
+function readEnvelope(payload: unknown): AdaptResult<Envelope> {
+  const root = asRecord(payload);
+  if (root === undefined) {
+    return { outcome: 'invalid', reason: `expected an object, received ${describeShape(payload)}` };
+  }
+
+  const meta = asRecord(root['meta']);
+  const data = asRecord(root['data']);
+  if (data === undefined) {
     return {
       outcome: 'invalid',
-      reason: `no eventType or type field. Keys present: ${keysOf(body)}`,
+      reason: `no 'data' object. Top-level keys: ${describeShape(root)}`,
     };
   }
 
-  if (DEVICE_STATUS_TYPES.includes(type)) {
-    return { outcome: 'ignored', reason: `'${type}' is a device status event, not activity` };
-  }
-  if (IGNORED_TYPES.includes(type)) {
-    return { outcome: 'ignored', reason: `'${type}' is not used by this product` };
+  const eventType = readString(data, 'type');
+  if (eventType === undefined) {
+    return { outcome: 'invalid', reason: `no data.type. data keys: ${describeShape(data)}` };
   }
 
-  const kind = ACTIVITY_KINDS[type];
-  if (kind === undefined) {
-    return { outcome: 'invalid', reason: `unrecognised event type '${type}'` };
-  }
-
-  const deviceId = readString(body, 'deviceId') ?? readString(body, 'device_id');
+  const attributes = asRecord(data['attributes']);
+  const deviceId = readString(attributes, 'source');
   if (deviceId === undefined) {
-    return { outcome: 'invalid', reason: `no deviceId. Keys present: ${keysOf(body)}` };
+    return {
+      outcome: 'invalid',
+      reason: `no data.attributes.source. attribute keys: ${describeShape(attributes)}`,
+    };
   }
 
-  const at = readInstant(body, 'occurredAt') ?? readInstant(body, 'createdAt');
+  const at = readInstant(attributes, 'timestamp');
   if (at === undefined) {
-    return { outcome: 'invalid', reason: `no usable occurredAt. Keys present: ${keysOf(body)}` };
+    return {
+      outcome: 'invalid',
+      reason: `no usable data.attributes.timestamp. attribute keys: ${describeShape(attributes)}`,
+    };
+  }
+
+  const eventId = readString(data, 'id') ?? `${deviceId}-${eventType}-${at}`;
+
+  return {
+    outcome: 'ok',
+    value: {
+      eventType,
+      deviceId,
+      at,
+      data,
+      context: {
+        // Ring documents request_id as the deduplication key and warns it may
+        // carry a truncated internal name — opaque, never parsed.
+        requestId: readString(meta, 'request_id') ?? eventId,
+        accountId: readString(meta, 'account_id') ?? '',
+        eventId,
+      },
+    },
+  };
+}
+
+function readSubject(data: Record<string, unknown>): MotionSubject {
+  const raw = readString(data, 'subType');
+  if (raw === undefined) return 'unspecified';
+  // An unrecognised classification becomes 'other' rather than 'unspecified'.
+  // Ring says new values may appear, and 'unspecified' is trusted as occupancy
+  // evidence by default — so an unknown label must not inherit that trust.
+  return MOTION_SUBJECTS[raw] ?? 'other';
+}
+
+export function adaptActivityEvent(
+  payload: unknown,
+  registry: DeviceRegistry,
+): AdaptResult<AdaptedActivity> {
+  const envelope = readEnvelope(payload);
+  if (envelope.outcome !== 'ok') return envelope;
+  const { eventType, deviceId, at, data, context } = envelope.value;
+
+  if (DEVICE_STATUS_TYPES.includes(eventType)) {
+    return { outcome: 'ignored', reason: `'${eventType}' is a device status event, not activity` };
+  }
+  if (IGNORED_TYPES.includes(eventType)) {
+    return { outcome: 'ignored', reason: `'${eventType}' is not used by this product` };
+  }
+
+  const kind = ACTIVITY_KINDS[eventType];
+  if (kind === undefined) {
+    return { outcome: 'invalid', reason: `unrecognised data.type '${eventType}'` };
   }
 
   const zone = zoneForDevice(registry, deviceId);
   if (zone === undefined) {
-    // Not invalid — Ring did its job. The household simply has a device nobody
-    // has placed yet, and inventing a zone here would be worse than declining.
-    return {
-      outcome: 'ignored',
-      reason: `device '${deviceId}' is not mapped to a zone`,
-    };
+    // Ring did its job. The household simply has a device nobody has placed yet,
+    // and guessing a zone is worse than declining — a wrong zone silently
+    // corrupts the interior/exterior distinction the whole model rests on.
+    return { outcome: 'ignored', reason: `device '${deviceId}' is not mapped to a zone` };
   }
 
-  const id = readString(body, 'eventId') ?? readString(body, 'id') ?? `${deviceId}-${at}-${kind}`;
+  return {
+    outcome: 'ok',
+    value: {
+      event: {
+        id: context.eventId,
+        deviceId,
+        zone,
+        kind,
+        at,
+        subject: kind === 'motion' ? readSubject(data) : 'unspecified',
+      },
+      context,
+    },
+  };
+}
 
-  return { outcome: 'ok', value: { id, deviceId, zone, kind, at } };
+/**
+ * A device that has never reported.
+ *
+ * Ring returns the Unix epoch for `reported_at` in that case, which a naive
+ * staleness check reads as "last seen in 1970" — technically the safe direction,
+ * but worth naming so it is never mistaken for a real timestamp.
+ */
+const NEVER_REPORTED_BEFORE = Date.parse('1971-01-01T00:00:00Z');
+
+export function hasEverReported(lastSeenAt: number): boolean {
+  return lastSeenAt > NEVER_REPORTED_BEFORE;
 }
 
 export function adaptDeviceHealth(
   payload: unknown,
   registry: DeviceRegistry,
-): AdaptResult<DeviceHealthSample> {
-  if (typeof payload !== 'object' || payload === null) {
-    return { outcome: 'invalid', reason: `expected an object, received ${keysOf(payload)}` };
-  }
-  const body = payload as Record<string, unknown>;
+): AdaptResult<AdaptedHealth> {
+  const envelope = readEnvelope(payload);
+  if (envelope.outcome !== 'ok') return envelope;
+  const { eventType, deviceId, at, context } = envelope.value;
 
-  const type = readString(body, 'eventType') ?? readString(body, 'type');
-  if (type === undefined || !DEVICE_STATUS_TYPES.includes(type)) {
-    return { outcome: 'ignored', reason: `'${type ?? 'unknown'}' is not a device status event` };
-  }
-
-  const deviceId = readString(body, 'deviceId') ?? readString(body, 'device_id');
-  if (deviceId === undefined) {
-    return { outcome: 'invalid', reason: `no deviceId. Keys present: ${keysOf(body)}` };
+  if (!DEVICE_STATUS_TYPES.includes(eventType)) {
+    return { outcome: 'ignored', reason: `'${eventType}' is not a device status event` };
   }
 
   const zone = zoneForDevice(registry, deviceId);
@@ -160,32 +281,66 @@ export function adaptDeviceHealth(
     return { outcome: 'ignored', reason: `device '${deviceId}' is not mapped to a zone` };
   }
 
-  const at = readInstant(body, 'occurredAt') ?? readInstant(body, 'createdAt');
-  if (at === undefined) {
-    return { outcome: 'invalid', reason: `no usable occurredAt. Keys present: ${keysOf(body)}` };
+  return {
+    outcome: 'ok',
+    value: {
+      sample: {
+        deviceId,
+        zone,
+        online: eventType === 'device_online',
+        lastSeenAt: at,
+      },
+      context,
+    },
+  };
+}
+
+/**
+ * Device status read from `GET /v1/devices/{id}/status` rather than a webhook.
+ *
+ * Needed because `device_offline` for a sensor is a heartbeat timeout and lags
+ * the actual loss of connectivity, so the status endpoint is the authority. Ring
+ * also documents three traps here, all handled below: `battery_status` and
+ * `signal_strength` are absent until first check-in, `reported_at` is the epoch
+ * for a device that has never reported, and `sensor_reporting_state` reads
+ * 'active' even then — so it says nothing about liveness.
+ */
+export function adaptDeviceStatus(
+  payload: unknown,
+  deviceId: string,
+  registry: DeviceRegistry,
+): AdaptResult<DeviceHealthSample> {
+  const root = asRecord(payload);
+  const data = asRecord(root?.['data']);
+  const attributes = asRecord(data?.['attributes']);
+  if (attributes === undefined) {
+    return {
+      outcome: 'invalid',
+      reason: `no data.attributes. shape: ${describeShape(payload)}`,
+    };
   }
 
-  // Derive liveness from the event type first, falling back to an explicit
-  // field. Anything ambiguous is treated as offline, because assuming a camera
-  // is watching when it is not is the failure that turns a blind spot into a
-  // false welfare alert.
-  const explicit = body['online'];
-  const online =
-    type === 'device_online' ? true : type === 'device_offline' ? false : explicit === true;
+  const zone = zoneForDevice(registry, deviceId);
+  if (zone === undefined) {
+    return { outcome: 'ignored', reason: `device '${deviceId}' is not mapped to a zone` };
+  }
 
-  const batteryRaw = body['batteryPercent'] ?? body['battery_percent'];
-  const batteryPercent = typeof batteryRaw === 'number' && Number.isFinite(batteryRaw)
-    ? batteryRaw
-    : undefined;
+  const online = attributes['online'] === true;
+  const reportedAt = readInstant(attributes, 'reported_at') ?? 0;
+  const battery = asRecord(attributes['battery_status'])?.['percentage'];
 
   return {
     outcome: 'ok',
     value: {
       deviceId,
       zone,
-      online,
-      lastSeenAt: at,
-      ...(batteryPercent === undefined ? {} : { batteryPercent }),
+      // A device that has never checked in cannot be treated as watching,
+      // whatever `online` claims.
+      online: online && hasEverReported(reportedAt),
+      lastSeenAt: reportedAt,
+      ...(typeof battery === 'number' && Number.isFinite(battery)
+        ? { batteryPercent: battery }
+        : {}),
     },
   };
 }

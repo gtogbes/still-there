@@ -192,3 +192,67 @@ describe('when not to speak', () => {
     expect(assessment.findings).toHaveLength(0);
   });
 });
+
+describe('the cat problem', () => {
+  // The failure this guards against is the worst one available: staying silent
+  // on a morning somebody needed help, because a pet was walking around the
+  // house. Ring's motion subType is what makes it detectable at all.
+  const events = dayEvents({ seed: 601, omit: () => true });
+
+  it('has a cat moving through interior zones on a day nobody got up', () => {
+    // Guard on the fixture. If the generator stopped producing pet motion, the
+    // test below would pass for entirely the wrong reason.
+    const interiorOther = events.filter(
+      (event) =>
+        event.subject === 'other' && ['hallway', 'kitchen'].includes(event.zone),
+    );
+    expect(interiorOther.length).toBeGreaterThan(0);
+  });
+
+  it('still reports the missed routine despite the movement indoors', () => {
+    const assessment = assess({
+      baseline,
+      config: ese.config,
+      todaysEvents: events,
+      health: healthySnapshot(ese, noon),
+      evaluatedAt: noon,
+    });
+    expect(deviations(assessment).map((f) => f.anchorKey)).toContain('first_activity');
+  });
+
+  it('loses every motion anchor if pet movement is accepted as occupancy', () => {
+    // Demonstrates the knob is load-bearing rather than decorative. Widen the
+    // accepted classifications to include 'other' and the cat becomes proof of
+    // life: first activity, the hallway and the kitchen all look satisfied on a
+    // morning nobody got up.
+    const permissive = assess({
+      baseline,
+      config: { ...ese.config, occupancySubjects: ['human', 'unspecified', 'other'] },
+      todaysEvents: events,
+      health: healthySnapshot(ese, noon),
+      evaluatedAt: noon,
+    });
+    const keys = deviations(permissive).map((f) => f.anchorKey);
+    expect(keys).not.toContain('first_activity');
+    expect(keys).not.toContain('activity:hallway:motion');
+    expect(keys).not.toContain('activity:kitchen:motion');
+  });
+
+  it('keeps the contact sensor anchor even when motion is compromised', () => {
+    // A quietly reassuring property, found by writing the test above. A cat
+    // cannot open a front door, so the contact sensor anchor survives a motion
+    // classification that has gone wrong entirely. Households with a contact
+    // sensor get defence in depth for free — worth knowing when advising someone
+    // which hardware to add first.
+    const permissive = assess({
+      baseline,
+      config: { ...ese.config, occupancySubjects: ['human', 'unspecified', 'other'] },
+      todaysEvents: events,
+      health: healthySnapshot(ese, noon),
+      evaluatedAt: noon,
+    });
+    expect(deviations(permissive).map((f) => f.anchorKey)).toContain(
+      'activity:front_door:door_open',
+    );
+  });
+});

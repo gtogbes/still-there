@@ -1,9 +1,12 @@
-import type { ActivityKind, HouseholdConfig } from '../domain/types.js';
+import type { ActivityKind, HouseholdConfig, MotionSubject } from '../domain/types.js';
+import { DEFAULT_OCCUPANCY_SUBJECTS } from '../domain/occupancy.js';
 
 /** One habitual action in a persona's day. */
 export interface RoutineStep {
   readonly zone: string;
   readonly kind: ActivityKind;
+  /** How Ring would classify it. Motion by the resident is 'human'. */
+  readonly subject?: MotionSubject;
   /** Typical local minute-of-day. */
   readonly atMinute: number;
   /** Symmetric spread around that time. */
@@ -20,6 +23,7 @@ export interface RoutineStep {
 export interface NoiseSource {
   readonly zone: string;
   readonly kind: ActivityKind;
+  readonly subject?: MotionSubject;
   readonly perDay: number;
   readonly fromMinute: number;
   readonly toMinute: number;
@@ -50,6 +54,7 @@ export const ese: Persona = {
     householdId: 'household-ese',
     timeZone: 'Europe/London',
     interiorZones: ['hallway', 'kitchen', 'landing'],
+    occupancySubjects: DEFAULT_OCCUPANCY_SUBJECTS,
     quietFromMinute: 23 * 60,
     quietToMinute: 6 * 60,
   },
@@ -60,10 +65,10 @@ export const ese: Persona = {
     { deviceId: 'dev-landing', zone: 'landing' },
   ],
   routine: [
-    { zone: 'hallway', kind: 'motion', atMinute: 7 * 60 + 35, jitterMinutes: 20, probability: 1, repeats: 2 },
+    { zone: 'hallway', kind: 'motion', subject: 'human', atMinute: 7 * 60 + 35, jitterMinutes: 20, probability: 1, repeats: 2 },
     { zone: 'front_door', kind: 'door_open', atMinute: 7 * 60 + 50, jitterMinutes: 20, probability: 1 },
-    { zone: 'kitchen', kind: 'motion', atMinute: 8 * 60 + 15, jitterMinutes: 25, probability: 1, repeats: 3 },
-    { zone: 'kitchen', kind: 'motion', atMinute: 12 * 60 + 30, jitterMinutes: 40, probability: 0.97, repeats: 2 },
+    { zone: 'kitchen', kind: 'motion', subject: 'human', atMinute: 8 * 60 + 15, jitterMinutes: 25, probability: 1, repeats: 3 },
+    { zone: 'kitchen', kind: 'motion', subject: 'human', atMinute: 12 * 60 + 30, jitterMinutes: 40, probability: 0.97, repeats: 2 },
     {
       zone: 'front_door',
       kind: 'door_open',
@@ -82,15 +87,24 @@ export const ese: Persona = {
       days: [2, 5],
       repeats: 2,
     },
-    { zone: 'kitchen', kind: 'motion', atMinute: 18 * 60 + 30, jitterMinutes: 40, probability: 0.97, repeats: 2 },
-    { zone: 'hallway', kind: 'motion', atMinute: 21 * 60 + 15, jitterMinutes: 45, probability: 0.9 },
+    { zone: 'kitchen', kind: 'motion', subject: 'human', atMinute: 18 * 60 + 30, jitterMinutes: 40, probability: 0.97, repeats: 2 },
+    { zone: 'hallway', kind: 'motion', subject: 'human', atMinute: 21 * 60 + 15, jitterMinutes: 45, probability: 0.9 },
   ],
   noise: [
-    // The street. Cars, the postman, next door's cat. None of it means Ese
-    // is awake, and the system must not treat it as though it does.
-    { zone: 'front_door', kind: 'motion', perDay: 14, fromMinute: 6 * 60, toMinute: 22 * 60 },
-    { zone: 'front_door', kind: 'vehicle', perDay: 6, fromMinute: 7 * 60, toMinute: 20 * 60 },
-    { zone: 'front_door', kind: 'package', perDay: 1, fromMinute: 9 * 60, toMinute: 17 * 60 },
+    // The street. Deliveries, passers-by, traffic. Ring classifies these
+    // accurately enough, but none of it happens indoors, so none of it is
+    // evidence Ese is awake.
+    { zone: 'front_door', kind: 'motion', subject: 'human', perDay: 14, fromMinute: 6 * 60, toMinute: 22 * 60 },
+    { zone: 'front_door', kind: 'motion', subject: 'vehicle', perDay: 6, fromMinute: 7 * 60, toMinute: 20 * 60 },
+    { zone: 'front_door', kind: 'doorbell', perDay: 1, fromMinute: 9 * 60, toMinute: 17 * 60 },
+
+    // The cat. This is the dangerous one, and the reason motion subType matters.
+    // It moves through the hallway and the kitchen all day — interior zones,
+    // exactly where we look for proof of life. Classified 'other_motion' by Ring
+    // and therefore excluded, because a system that accepts it would report a
+    // perfectly normal morning for a house its owner never got out of bed in.
+    { zone: 'hallway', kind: 'motion', subject: 'other', perDay: 9, fromMinute: 6 * 60, toMinute: 22 * 60 },
+    { zone: 'kitchen', kind: 'motion', subject: 'other', perDay: 6, fromMinute: 6 * 60, toMinute: 22 * 60 },
   ],
 };
 
@@ -109,6 +123,7 @@ export const nosa: Persona = {
     householdId: 'household-nosa',
     timeZone: 'Europe/London',
     interiorZones: ['lounge', 'kitchen'],
+    occupancySubjects: DEFAULT_OCCUPANCY_SUBJECTS,
     quietFromMinute: 24 * 60 - 30,
     quietToMinute: 5 * 60,
   },
@@ -118,10 +133,12 @@ export const nosa: Persona = {
     { deviceId: 'dev-nosa-kitchen', zone: 'kitchen' },
   ],
   routine: [
-    { zone: 'lounge', kind: 'motion', atMinute: 9 * 60, jitterMinutes: 150, probability: 0.95, repeats: 2 },
-    { zone: 'kitchen', kind: 'motion', atMinute: 11 * 60, jitterMinutes: 180, probability: 0.7 },
-    { zone: 'kitchen', kind: 'motion', atMinute: 17 * 60, jitterMinutes: 200, probability: 0.6 },
-    { zone: 'lounge', kind: 'motion', atMinute: 20 * 60, jitterMinutes: 160, probability: 0.85, repeats: 2 },
+    { zone: 'lounge', kind: 'motion', subject: 'human', atMinute: 9 * 60, jitterMinutes: 150, probability: 0.95, repeats: 2 },
+    { zone: 'kitchen', kind: 'motion', subject: 'human', atMinute: 11 * 60, jitterMinutes: 180, probability: 0.7 },
+    { zone: 'kitchen', kind: 'motion', subject: 'human', atMinute: 17 * 60, jitterMinutes: 200, probability: 0.6 },
+    { zone: 'lounge', kind: 'motion', subject: 'human', atMinute: 20 * 60, jitterMinutes: 160, probability: 0.85, repeats: 2 },
   ],
-  noise: [{ zone: 'front_door', kind: 'motion', perDay: 5, fromMinute: 7 * 60, toMinute: 21 * 60 }],
+  noise: [
+    { zone: 'front_door', kind: 'motion', subject: 'human', perDay: 5, fromMinute: 7 * 60, toMinute: 21 * 60 },
+  ],
 };

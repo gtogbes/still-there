@@ -66,10 +66,22 @@ suite replay ninety days in milliseconds, and what lets the demo compress a day 
 twenty minutes without touching the reasoning logic.
 
 **Not all events are occupancy evidence.** A doorbell facing the street fires on
-passing cars, the postman, next door's cat. If exterior motion counted as occupancy
-the system would report a normal morning for a house nobody had got out of bed in —
-the most dangerous false negative available. Only interior movement, or a door
-physically opening, counts.
+passing cars and the postman. If exterior motion counted as occupancy the system would
+report a normal morning for a house nobody had got out of bed in — the most dangerous
+false negative available. Only interior movement, or a door physically opening, counts.
+
+**And not all interior movement is a person.** Ring classifies motion as `human`,
+`vehicle` or `other_motion`, and that distinction does real work here, because the cat
+walks through the hallway all day. By default only `human` and unclassified motion count
+as proof of life. The asymmetry is deliberate: mistaking a pet for the resident means
+silence on a day something was wrong, while discounting the resident means one
+unnecessary phone call. Only one of those hurts anybody, so the conservative reading
+wins even though it costs us false positives.
+
+A pleasant consequence, found while writing the test for it: a cat cannot open a front
+door, so the contact-sensor anchor survives even if motion classification fails
+completely. Households with a contact sensor get defence in depth for free, which is
+useful when advising someone which device to add first.
 
 **A flat battery and an unconscious person produce identical data: silence.** Every
 missing-activity finding is checked against device health first. If the camera was
@@ -127,7 +139,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 76 tests, no credentials or Ring account needed
+npm test          # 92 tests, no credentials or Ring account needed
 npm run typecheck
 npm run check     # both
 ```
@@ -211,12 +223,25 @@ this system consumes event metadata from webhooks and builds its own rolling his
 so it may need no subscription at all. If that holds it is a real advantage worth
 making explicit in the submission. Needs confirming against a live account.
 
-**What do real payloads look like?** The field names in `src/ring/adapter.ts` are
-inferred from documentation, not captured from a live webhook. The adapter is
-deliberately strict rather than tolerant for this reason: an unrecognised payload comes
-back as `invalid` listing the keys it actually contained, so the first failed webhook
-hands us Ring's real shape instead of silently coercing something plausible. Replacing
-those fixtures with genuine captures is the first job once sandbox events flow.
+**Resolved: the payload is a JSON:API envelope.** Field paths now follow Ring's webhook
+v1.1 specification — `data.type`, `data.attributes.source`,
+`data.attributes.timestamp`, with `meta.request_id` as the deduplication key. An earlier
+version of the adapter guessed a flat shape and was wrong about nearly every name,
+which is a reasonable argument for reading the specification first. Two vocabularies
+exist and are handled separately: webhooks say `motion_detected` and `button_press`,
+the Event History API says `motion` and `ding`.
+
+Still outstanding: these are documented shapes, not captured ones. Replacing the
+fixtures with live sandbox deliveries remains the first job. The adapter stays strict
+rather than tolerant for exactly that reason — an unrecognised payload reports the keys
+it actually contained, so one failed delivery tells us what moved.
+
+**Link the Ring account as early as possible.** The Event History API is time-gated to
+the consent date and cannot reach back before it. Ring accumulates history from linking
+onward, which means our pipeline does not have to be up continuously to build a
+baseline — but every day of delay is a day of history that can never be recovered.
+Sensors are the exception: no history endpoint covers them at all, so contact-sensor
+events must be persisted on receipt or lost.
 
 **No video access without motion access.** The Cameras and Doorbells scope bundles
 livestream and video download with motion events; they cannot be requested separately.

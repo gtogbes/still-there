@@ -1,4 +1,4 @@
-import type { ActivityEvent, HouseholdConfig } from './types.js';
+import type { ActivityEvent, HouseholdConfig, MotionSubject } from './types.js';
 import { isQuietMinute, localParts } from './time.js';
 
 /**
@@ -12,10 +12,26 @@ import { isQuietMinute, localParts } from './time.js';
  * So occupancy evidence is narrow and deliberate: movement inside the home, or
  * a door being physically opened. Everything else is context, not proof.
  */
+export const DEFAULT_OCCUPANCY_SUBJECTS: readonly MotionSubject[] = ['human', 'unspecified'];
+
 export function isOccupancyEvidence(event: ActivityEvent, config: HouseholdConfig): boolean {
+  // A contact sensor reporting an opening is the strongest signal available:
+  // somebody physically moved a door. Nothing else comes close.
   if (event.kind === 'door_open') return true;
-  if (event.kind === 'vehicle' || event.kind === 'package') return false;
-  return config.interiorZones.includes(event.zone);
+
+  // A closing tells us nothing on its own — a door can swing shut. Tamper is a
+  // maintenance concern, not evidence of anybody being well.
+  if (event.kind === 'door_closed' || event.kind === 'tamper') return false;
+
+  // A doorbell press is almost always a visitor, not the resident.
+  if (event.kind === 'doorbell') return false;
+
+  // Motion only counts indoors. A human at the front door is as likely to be the
+  // postman as the resident, and we cannot tell the difference.
+  if (!config.interiorZones.includes(event.zone)) return false;
+
+  const accepted = config.occupancySubjects ?? DEFAULT_OCCUPANCY_SUBJECTS;
+  return accepted.includes(event.subject);
 }
 
 /**

@@ -43,7 +43,13 @@ export function generateHistory(persona: Persona, options: GenerateOptions): Act
   const events: ActivityEvent[] = [];
   let sequence = 0;
 
-  const emit = (dateKey: string, minute: number, zone: string, kind: ActivityEvent['kind']): void => {
+  const emit = (
+    dateKey: string,
+    minute: number,
+    zone: string,
+    kind: ActivityEvent['kind'],
+    subject: ActivityEvent['subject'],
+  ): void => {
     sequence += 1;
     events.push({
       id: `${persona.config.householdId}-${sequence}`,
@@ -51,6 +57,7 @@ export function generateHistory(persona: Persona, options: GenerateOptions): Act
       zone,
       kind,
       at: fromLocal(dateKey, minute, persona.config.timeZone),
+      subject,
     });
   };
 
@@ -66,7 +73,13 @@ export function generateHistory(persona: Persona, options: GenerateOptions): Act
       const start = step.atMinute + jitter(rng, step.jitterMinutes);
       const repeats = step.repeats ?? 1;
       for (let burst = 0; burst < repeats; burst += 1) {
-        emit(dateKey, start + burst * randomInt(rng, 1, 6), step.zone, step.kind);
+        emit(
+          dateKey,
+          start + burst * randomInt(rng, 1, 6),
+          step.zone,
+          step.kind,
+          step.subject ?? 'unspecified',
+        );
       }
     }
 
@@ -75,7 +88,13 @@ export function generateHistory(persona: Persona, options: GenerateOptions): Act
         // Vary the count so the street is not suspiciously regular.
         const count = Math.max(0, Math.round(source.perDay * (0.5 + rng())));
         for (let n = 0; n < count; n += 1) {
-          emit(dateKey, randomInt(rng, source.fromMinute, source.toMinute), source.zone, source.kind);
+          emit(
+            dateKey,
+            randomInt(rng, source.fromMinute, source.toMinute),
+            source.zone,
+            source.kind,
+            source.subject ?? 'unspecified',
+          );
         }
       }
     }

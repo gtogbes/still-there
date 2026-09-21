@@ -14,6 +14,19 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * development — tests supply a known key instead.
  */
 
+/** The header Ring puts the HMAC-SHA256 digest in. */
+export const SIGNATURE_HEADER = 'x-signature';
+
+/**
+ * Ring expects a 2xx within five seconds and retries otherwise.
+ *
+ * Which means verification and acknowledgement must be the only work on the
+ * request path. Learning a baseline, running an assessment, or calling Bedrock all
+ * belong behind a queue — do any of it inline and a slow model response turns into
+ * duplicate deliveries.
+ */
+export const ACK_DEADLINE_MS = 5_000;
+
 export interface VerificationResult {
   readonly valid: boolean;
   /** Present when invalid. Safe to log: never contains the key or the signature. */

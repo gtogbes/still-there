@@ -7,8 +7,28 @@
  * what lets the demo compress a day into twenty minutes.
  */
 
-/** Event kinds we normalise Ring notifications down to. */
-export type ActivityKind = 'motion' | 'doorbell' | 'door_open' | 'package' | 'vehicle';
+/**
+ * Event kinds we normalise Ring notifications down to.
+ *
+ * Deliberately narrower than Ring's event list. Everything here is something
+ * that bears on whether a person is moving around their home; subscription
+ * changes and livestream sessions are filtered out at the seam.
+ */
+export type ActivityKind = 'motion' | 'doorbell' | 'door_open' | 'door_closed' | 'tamper';
+
+/**
+ * What Ring thinks caused a motion event.
+ *
+ * Ring classifies motion as human, vehicle, or uncategorised. That distinction
+ * turns out to matter a great deal here, because the alternative is treating any
+ * movement as proof of life — and a cat crossing the hallway would then read as
+ * "she is up and about" on a morning when she is not. That is a false negative in
+ * the direction that actually hurts someone.
+ *
+ * 'unspecified' covers both Ring's generic `motion` subType and events that carry
+ * no classification at all.
+ */
+export type MotionSubject = 'human' | 'vehicle' | 'other' | 'unspecified';
 
 /** A single normalised activity event. */
 export interface ActivityEvent {
@@ -19,6 +39,8 @@ export interface ActivityEvent {
   readonly kind: ActivityKind;
   /** Epoch milliseconds. */
   readonly at: number;
+  /** Only meaningful for motion. Defaults to 'unspecified' elsewhere. */
+  readonly subject: MotionSubject;
 }
 
 /**
@@ -49,6 +71,18 @@ export interface HouseholdConfig {
    * passing the front camera does not mean your mother is awake.
    */
   readonly interiorZones: readonly string[];
+  /**
+   * Which motion classifications count as a person being present.
+   *
+   * Default accepts 'human' and 'unspecified' and rejects 'vehicle' and 'other'.
+   * The asymmetry is deliberate. Wrongly counting a pet as the resident means
+   * staying silent on a day something is wrong; wrongly discounting the resident
+   * means an unnecessary phone call. Only one of those is dangerous, so the
+   * conservative option wins even though it costs us false positives.
+   *
+   * Households without pets can widen this and get fewer nudges.
+   */
+  readonly occupancySubjects: readonly MotionSubject[];
   /** Local minute-of-day when the night begins, e.g. 1380 for 23:00. */
   readonly quietFromMinute: number;
   /** Local minute-of-day when the day begins, e.g. 360 for 06:00. */
