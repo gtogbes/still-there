@@ -31,12 +31,34 @@ const DEFAULTS = {
   oauthBaseUrl: 'https://oauth.ring.com',
 } as const;
 
+/**
+ * Trims, then removes a matched pair of surrounding quotes.
+ *
+ * Learned the hard way. A credential pasted from the Ring portal arrived as
+ * `KEY= "abc..."`, and a quoted HMAC key fails every signature check while
+ * looking precisely like someone forging requests. None of these credential
+ * formats legitimately begin and end with a quote, so stripping is unambiguous
+ * and far kinder than the alternative.
+ */
+function clean(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length >= 2) {
+    const first = trimmed[0];
+    const last = trimmed[trimmed.length - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      return trimmed.slice(1, -1).trim();
+    }
+  }
+  return trimmed;
+}
+
 function required(source: Record<string, string | undefined>, key: string): string {
   const value = source[key];
-  if (value === undefined || value.trim() === '') {
+  const cleaned = value === undefined ? '' : clean(value);
+  if (cleaned === '') {
     throw new ConfigError(`${key} is not set. Copy .env.example to .env and fill it in.`);
   }
-  return value.trim();
+  return cleaned;
 }
 
 function optional(
@@ -45,7 +67,8 @@ function optional(
   fallback: string,
 ): string {
   const value = source[key];
-  return value === undefined || value.trim() === '' ? fallback : value.trim();
+  const cleaned = value === undefined ? '' : clean(value);
+  return cleaned === '' ? fallback : cleaned;
 }
 
 export function loadRingConfig(source: Record<string, string | undefined>): RingConfig {

@@ -40,6 +40,31 @@ describe('configuration loading', () => {
     expect(config.clientId).toBe('padded');
   });
 
+  it('strips surrounding quotes', () => {
+    // Not hypothetical. The real credentials arrived as `KEY= "value"`, and a
+    // quoted HMAC key fails every signature check while looking exactly like
+    // somebody forging requests.
+    const config = loadRingConfig({
+      RING_CLIENT_ID: ' "quoted-id"',
+      RING_CLIENT_SECRET: "'single-quoted'",
+      RING_HMAC_KEY: '  "padded-and-quoted"  ',
+    });
+    expect(config.clientId).toBe('quoted-id');
+    expect(config.clientSecret).toBe('single-quoted');
+    expect(config.hmacKey).toBe('padded-and-quoted');
+  });
+
+  it('leaves an unmatched quote alone', () => {
+    // Only a matched pair is removed. A stray leading quote is more likely a
+    // truncated paste, and silently repairing it would hide the damage.
+    const config = loadRingConfig({ ...complete, RING_CLIENT_ID: '"unbalanced' });
+    expect(config.clientId).toBe('"unbalanced');
+  });
+
+  it('treats a quoted empty string as missing', () => {
+    expect(() => loadRingConfig({ ...complete, RING_HMAC_KEY: '""' })).toThrow(ConfigError);
+  });
+
   it('rejects an unknown environment', () => {
     expect(() => loadRingConfig({ ...complete, RING_ENVIRONMENT: 'staging' })).toThrow(
       /sandbox.*production/,
