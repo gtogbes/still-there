@@ -127,14 +127,22 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 41 tests, no credentials or Ring account needed
+npm test          # 76 tests, no credentials or Ring account needed
 npm run typecheck
 npm run check     # both
 ```
 
-The whole suite runs on synthetic households, offline, in under a second. No AWS
-credentials, no Ring account, no network. Integration tests against the real Ring API
-will sit behind a separate gated command.
+The whole suite runs on synthetic households and fixed HMAC keys, offline, in under a
+second. No AWS credentials, no Ring account, no network.
+
+To talk to Ring, copy `.env.example` to `.env` and fill in the three credentials issued
+when you register the app in the Ring Developer Portal. `.env` is gitignored. The
+Client Secret and HMAC Signature Key are displayed exactly once and cannot be
+retrieved afterwards, so capture them at creation time. `RING_ENVIRONMENT` defaults to
+`sandbox`, which uses Ring's synthetic devices and has no rate limits — an
+unconfigured deployment therefore cannot reach a real household's data.
+
+Integration tests against the live API will sit behind a separate gated command.
 
 ## Layout
 
@@ -148,6 +156,11 @@ src/domain/       pure reasoning: no I/O, no SDKs, no ambient time
   baseline.ts     learning the routine
   health.ts       could we actually have seen it?
   deviation.ts    the assessment
+src/ring/         the seam with Ring. Nothing below this knows Ring exists.
+  adapter.ts      Ring payloads -> ActivityEvent / DeviceHealthSample
+  devices.ts      device-to-zone mapping, the one thing Ring cannot tell us
+  webhook.ts      HMAC-SHA256 signature and nonce verification
+src/config.ts     credential loading, with redacted logging
 src/testing/      synthetic household harness
   personas.ts     Ese (regular) and Nosa (irregular)
   generator.ts    event streams, device health snapshots
@@ -155,19 +168,36 @@ src/testing/      synthetic household harness
 tests/
 ```
 
+### Zone is our concept, not Ring's
+
+Ring knows a device with a given ID saw motion. It has no idea that device is in a
+hallway, and no idea a hallway is indoors. That mapping is supplied by whoever sets the
+household up, and the interior/exterior distinction the entire occupancy model rests on
+derives from it.
+
+Which makes it quietly dangerous. Label the front-door camera as a hallway and passing
+traffic starts counting as proof the resident is awake — no error, no warning, just a
+system that has stopped working. Unmapped devices are surfaced rather than guessed at,
+and an event from a device with no zone is declined instead of being placed somewhere
+plausible.
+
 ## Known unknowns
 
 Recorded honestly, because these decide whether the design survives contact with the
 real API.
 
-**Does Ring emit a door-opening event?** The occupancy model currently treats
-`door_open` as strong evidence, but Ring's documented camera events are motion,
-doorbell presses and device status, and the Playground simulates Package, Vehicle and
-Motion. There may be no `door_open` for a camera or doorbell at all — it may require
-Ring Alarm contact sensors, which is extra hardware we do not want to depend on. First
-job against the live API is to enumerate the actual event types and, if `door_open` is
-not among them, drop it from the occupancy predicate and lean entirely on interior
-motion.
+**Resolved: `door_open` is real, but it belongs to sensors.** The scope picker in the
+Ring Developer Portal settles it — Cameras and Doorbells covers motion, doorbell
+presses, livestream and video download, while Contact Sensors covers door and window
+open/close. So the occupancy model was not wrong, it was assuming hardware we had not
+accounted for. Both scopes are requested. In production a household needs a contact
+sensor for the strongest signal; without one the model falls back to interior motion,
+which still works.
+
+**Resolved: device online/offline comes free.** Every approved app automatically
+receives Account and Lifecycle events, including device status changes. The blind-spot
+detection that the whole design leans on now has a real feed behind it rather than a
+hopeful interface.
 
 **A doorbell alone is not enough.** Under our own model, a doorbell facing the street
 produces exterior motion, which is explicitly *not* occupancy evidence. Absence
@@ -181,14 +211,31 @@ this system consumes event metadata from webhooks and builds its own rolling his
 so it may need no subscription at all. If that holds it is a real advantage worth
 making explicit in the submission. Needs confirming against a live account.
 
+**What do real payloads look like?** The field names in `src/ring/adapter.ts` are
+inferred from documentation, not captured from a live webhook. The adapter is
+deliberately strict rather than tolerant for this reason: an unrecognised payload comes
+back as `invalid` listing the keys it actually contained, so the first failed webhook
+hands us Ring's real shape instead of silently coercing something plausible. Replacing
+those fixtures with genuine captures is the first job once sandbox events flow.
+
+**No video access without motion access.** The Cameras and Doorbells scope bundles
+livestream and video download with motion events; they cannot be requested separately.
+So the application holds video capability it deliberately does not exercise. Worth
+stating plainly rather than letting the privacy claim imply we could not look if we
+wanted to. Scopes we genuinely do not need — flood, temperature, air quality, chimes —
+are all switched off.
+
 ## Not built yet
 
-This is the reasoning core and its test harness. Still to come:
+The reasoning core, the Ring seam and their tests are done. Still to come:
 
-- Ring OAuth (PKCE) and webhook ingestion, server-to-server — Ring's endpoints block
+- Ring OAuth account linking (authorization code with PKCE) and the token exchange
+- The webhook HTTP endpoint itself, server-to-server — Ring's endpoints block
   browser-initiated calls via CORS
-- Contract tests asserting the synthetic event shape matches real Ring payloads
-- AWS pipeline: EventBridge, Lambda, storage for the rolling event history
+- Real payload captures to replace the inferred fixtures in `tests/adapter.test.ts`
+- Storage for the rolling event history, and idempotent ingestion so Ring's webhook
+  retries do not read as extra visits to the kitchen
+- AWS pipeline: EventBridge, Lambda, scheduled assessment runs
 - Bedrock narration over the deterministic findings, with the safety invariants
   enforced before the model is involved
 - Escalation-to-imagery boundary, logged and visible to the resident

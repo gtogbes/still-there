@@ -43,3 +43,20 @@ export {
   localParts,
   weekdayOf,
 } from './domain/time.js';
+
+export { adaptActivityEvent, adaptDeviceHealth } from './ring/adapter.js';
+export type { AdaptResult } from './ring/adapter.js';
+
+export { buildDeviceRegistry, unmappedDevices, zoneForDevice } from './ring/devices.js';
+export type { DeviceRegistry } from './ring/devices.js';
+
+export {
+  signNonce,
+  signPayload,
+  verifyNonce,
+  verifyWebhookSignature,
+} from './ring/webhook.js';
+export type { VerificationResult } from './ring/webhook.js';
+
+export { ConfigError, describeConfig, loadRingConfig } from './config.js';
+export type { RingConfig, RingEnvironment } from './config.js';

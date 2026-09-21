@@ -1,0 +1,59 @@
+import { describe, expect, it } from 'vitest';
+import { ConfigError, describeConfig, loadRingConfig } from '../src/config.js';
+
+const complete = {
+  RING_CLIENT_ID: 'client-id-value',
+  RING_CLIENT_SECRET: 'client-secret-value',
+  RING_HMAC_KEY: 'hmac-key-value',
+};
+
+describe('configuration loading', () => {
+  it('loads the three credentials and applies defaults', () => {
+    const config = loadRingConfig(complete);
+    expect(config.clientId).toBe('client-id-value');
+    expect(config.apiBaseUrl).toBe('https://api.amazonvision.com');
+    expect(config.oauthBaseUrl).toBe('https://oauth.ring.com');
+    expect(config.environment).toBe('sandbox');
+  });
+
+  it('defaults to sandbox rather than production', () => {
+    // The safe default. Sandbox uses synthetic devices, so an unconfigured
+    // deployment cannot accidentally read a real household's data.
+    expect(loadRingConfig(complete).environment).toBe('sandbox');
+  });
+
+  it('names the variable that is missing', () => {
+    expect(() => loadRingConfig({ ...complete, RING_HMAC_KEY: undefined })).toThrow(ConfigError);
+    expect(() => loadRingConfig({ ...complete, RING_HMAC_KEY: undefined })).toThrow(
+      /RING_HMAC_KEY/,
+    );
+  });
+
+  it('treats whitespace-only values as missing', () => {
+    // Copy-paste from a portal leaves stray whitespace surprisingly often, and a
+    // key of " " fails signature verification in a way that looks like an attack.
+    expect(() => loadRingConfig({ ...complete, RING_CLIENT_SECRET: '   ' })).toThrow(ConfigError);
+  });
+
+  it('trims values', () => {
+    const config = loadRingConfig({ ...complete, RING_CLIENT_ID: '  padded  ' });
+    expect(config.clientId).toBe('padded');
+  });
+
+  it('rejects an unknown environment', () => {
+    expect(() => loadRingConfig({ ...complete, RING_ENVIRONMENT: 'staging' })).toThrow(
+      /sandbox.*production/,
+    );
+  });
+});
+
+describe('describing configuration for logs', () => {
+  it('confirms credentials are present without revealing them', () => {
+    const config = loadRingConfig(complete);
+    const described = JSON.stringify(describeConfig(config));
+    expect(described).not.toContain('client-secret-value');
+    expect(described).not.toContain('hmac-key-value');
+    expect(described).not.toContain('client-id-value');
+    expect(described).toContain('set (');
+  });
+});
