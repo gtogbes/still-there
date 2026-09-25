@@ -19,7 +19,17 @@ import { dirname, join } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outdir = join(root, 'dist', 'handlers');
 
-const HANDLERS = ['webhook', 'token', 'link', 'home'];
+const HANDLERS = ['webhook', 'token', 'link', 'home', 'assess'];
+
+/**
+ * Operator scripts that import domain code.
+ *
+ * They go through esbuild for one specific reason: the TypeScript sources use `.js`
+ * import specifiers, which is correct for NodeNext, and Node's built-in type
+ * stripping does not rewrite them to `.ts`. esbuild does, so the tools get bundled
+ * the same way the handlers do rather than growing a parallel import convention.
+ */
+const TOOLS = ['seed-household'];
 
 await rm(join(root, 'dist'), { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });
@@ -50,4 +60,30 @@ if (result.errors.length > 0) {
   process.exit(1);
 }
 
-console.log(`\nBundled ${HANDLERS.length} handlers into dist/handlers\n`);
+const tools = await build({
+  entryPoints: TOOLS.map((name) => join(root, 'scripts', `${name}.mjs`)),
+  outdir: join(root, 'dist', 'tools'),
+  bundle: true,
+  platform: 'node',
+  target: 'node22',
+  format: 'esm',
+  sourcemap: true,
+  minify: false,
+  outExtension: { '.js': '.mjs' },
+  logLevel: 'warning',
+  banner: {
+    js: [
+      "import { createRequire as __createRequire } from 'node:module';",
+      'const require = __createRequire(import.meta.url);',
+    ].join('\n'),
+  },
+});
+
+if (tools.errors.length > 0) {
+  console.error(tools.errors);
+  process.exit(1);
+}
+
+console.log(
+  `\nBundled ${HANDLERS.length} handlers into dist/handlers and ${TOOLS.length} tool(s) into dist/tools\n`,
+);

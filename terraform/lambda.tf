@@ -118,6 +118,31 @@ resource "aws_iam_role_policy" "link" {
   policy = data.aws_iam_policy_document.link.json
 }
 
+# The assessment reads activity and writes its verdict. It never needs the Ring
+# credentials, because it talks to nobody — it reasons over what is already stored.
+data "aws_iam_policy_document" "assess" {
+  statement {
+    actions   = ["dynamodb:Query", "dynamodb:PutItem"]
+    resources = [aws_dynamodb_table.events.arn]
+  }
+
+  statement {
+    actions   = ["dynamodb:Query", "dynamodb:GetItem"]
+    resources = [aws_dynamodb_table.state.arn]
+  }
+
+  statement {
+    actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
+    resources = [aws_kms_key.main.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "assess" {
+  name   = "access"
+  role   = aws_iam_role.handler["assess"].id
+  policy = data.aws_iam_policy_document.assess.json
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Functions
 # ──────────────────────────────────────────────────────────────────────────────

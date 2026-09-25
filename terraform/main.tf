@@ -32,6 +32,11 @@ locals {
       timeout     = 5
       memory      = 128
     }
+    assess = {
+      description = "Scheduled absence assessment. Learns the routine, then reports what did not happen."
+      timeout     = 60
+      memory      = 1024
+    }
   }
 }
 

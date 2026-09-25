@@ -69,8 +69,13 @@ locals {
   }
 }
 
+# Keyed on routes rather than handlers, deliberately. Not every function is reached
+# over HTTP — the assessment is schedule-driven and has no route — and keying this on
+# the handler list gave it an integration and an invoke permission it had no use for.
+# Dead surface area, and a grant that would quietly become live if anyone later added
+# a catch-all route.
 resource "aws_apigatewayv2_integration" "handler" {
-  for_each = local.handlers
+  for_each = local.routes
 
   api_id                 = aws_apigatewayv2_api.main.id
   integration_type       = "AWS_PROXY"
@@ -79,7 +84,7 @@ resource "aws_apigatewayv2_integration" "handler" {
 
   # Shorter than the function timeout so the gateway is never the thing that gives
   # up first — a gateway timeout tells us nothing about what the handler was doing.
-  timeout_milliseconds = each.value.timeout * 1000 - 500
+  timeout_milliseconds = local.handlers[each.key].timeout * 1000 - 500
 }
 
 resource "aws_apigatewayv2_route" "handler" {
@@ -91,7 +96,7 @@ resource "aws_apigatewayv2_route" "handler" {
 }
 
 resource "aws_lambda_permission" "api" {
-  for_each = local.handlers
+  for_each = local.routes
 
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"

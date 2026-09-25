@@ -55,6 +55,18 @@ variable "sign_in_url" {
   default     = "https://github.com/gtogbes/still-there"
 }
 
+variable "assessment_enabled" {
+  description = <<-EOT
+    Whether the scheduled assessment runs.
+
+    Off by default so a fresh deployment does not begin reasoning about a household
+    that has not been configured yet. Turn it on once a household config and device
+    mappings exist.
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "repo_url" {
   description = "Public source repository, linked from the app homepage."
   type        = string

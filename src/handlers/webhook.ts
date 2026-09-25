@@ -1,4 +1,4 @@
-import { adaptActivityEvent, adaptDeviceHealth } from '../ring/adapter.js';
+import { classifyRingPayload } from '../ring/classify.js';
 import { SIGNATURE_HEADER, verifyWebhookSignature } from '../ring/webhook.js';
 import { putEvent } from '../storage/events.js';
 import { claimRequestId, deviceRegistryFor, putDeviceHealth } from '../storage/state.js';
@@ -92,61 +92,43 @@ export async function handler(event: LambdaEvent): Promise<LambdaResponse> {
 
   const registry = await deviceRegistryFor(tables, householdId);
 
-  // Order matters, and an earlier version got it wrong. Both adapters were run and
-  // the result only treated as uninterpretable if *both* said 'invalid' — but the
-  // health adapter answers 'ignored' for anything that is not a status event, which
-  // masked the activity adapter's 'invalid' and quietly swallowed genuinely unknown
-  // event types as "ignored". That is precisely the silence the strict adapter
-  // exists to prevent.
-  //
-  // adaptActivityEvent already returns 'ignored' for device status types, so its
-  // verdict is authoritative: 'invalid' means nobody can read this payload.
-  const activity = adaptActivityEvent(payload, registry);
+  // The routing decision lives in classifyRingPayload, as a pure function with its
+  // own tests. It used to be inline here and had a bug that no test could reach
+  // while it was entangled with DynamoDB and Secrets Manager.
+  const classified = classifyRingPayload(payload, registry);
 
-  if (activity.outcome === 'invalid') {
-    // Logged loudly because it means Ring's payload shape has moved, or ours has.
-    // Still a 200: a retry produces the identical failure, and a retry storm is
-    // worse than a loss we have already recorded.
-    console.error('could not interpret signed Ring payload', { reason: activity.reason });
-    return ok('uninterpretable');
-  }
-
-  if (activity.outcome === 'ok') {
-    const fresh = await claimRequestId(tables, activity.value.context.requestId, Date.now());
-    if (!fresh) {
-      return ok('duplicate');
+  switch (classified.kind) {
+    case 'activity': {
+      const { event: activity, context } = classified.activity;
+      if (!(await claimRequestId(tables, context.requestId, Date.now()))) {
+        return ok('duplicate');
+      }
+      await putEvent(tables, householdId, context.accountId, context.requestId, activity);
+      return ok('recorded');
     }
-    await putEvent(
-      tables,
-      householdId,
-      activity.value.context.accountId,
-      activity.value.context.requestId,
-      activity.value.event,
-    );
-    return ok('recorded');
-  }
 
-  const health = adaptDeviceHealth(payload, registry);
-  if (health.outcome === 'ok') {
-    const fresh = await claimRequestId(tables, health.value.context.requestId, Date.now());
-    if (!fresh) return ok('duplicate');
-    // Health is latest-known state per device, not history. Writing it onto the
-    // activity stream would make a camera dropping offline look like movement.
-    await putDeviceHealth(tables, householdId, health.value.sample);
-    return ok('device status recorded');
-  }
+    case 'health': {
+      const { sample, context } = classified.health;
+      if (!(await claimRequestId(tables, context.requestId, Date.now()))) {
+        return ok('duplicate');
+      }
+      // Health is latest-known state per device, not history. Writing it onto the
+      // activity stream would make a camera dropping offline look like movement.
+      await putDeviceHealth(tables, householdId, sample);
+      return ok('device status recorded');
+    }
 
-  if (health.outcome === 'invalid') {
-    console.error('could not interpret signed device status payload', {
-      reason: health.reason,
-    });
-    return ok('uninterpretable');
-  }
+    case 'uninterpretable':
+      // Logged loudly because it means Ring's payload shape has moved, or ours has.
+      // Still a 200: a retry produces the identical failure, and a retry storm is
+      // worse than a loss we have already recorded.
+      console.error('could not interpret signed Ring payload', { reason: classified.reason });
+      return ok('uninterpretable');
 
-  // Understood, and deliberately not acted on. Subscription changes, door
-  // closures, unplaced devices.
-  console.log('ignored Ring event', { reason: activity.reason });
-  return ok('ignored');
+    case 'ignored':
+      console.log('ignored Ring event', { reason: classified.reason });
+      return ok('ignored');
+  }
 }
 
 function describe(error: unknown): string {
