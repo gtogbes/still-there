@@ -40,10 +40,79 @@ data "aws_caller_identity" "current" {}
 # is what makes key rotation and access auditing possible later.
 # ──────────────────────────────────────────────────────────────────────────────
 
+data "aws_iam_policy_document" "kms" {
+  # Without this statement the key becomes unmanageable. Supplying any policy
+  # replaces the default one AWS would have attached, and the default is the only
+  # thing granting the account administrative access — omit it and nobody can
+  # change the policy again, including to put it back.
+  statement {
+    sid       = "AccountAdministration"
+    actions   = ["kms:*"]
+    resources = ["*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  # CloudWatch Logs encrypts log data with the key itself rather than through a
+  # caller's credentials, so the service principal needs naming here. The first
+  # apply failed on exactly this: AccessDeniedException, "the specified KMS key
+  # does not exist or is not allowed to be used with Arn <log-group>".
+  statement {
+    sid = "AllowCloudWatchLogs"
+
+    actions = [
+      "kms:Encrypt*",
+      "kms:Decrypt*",
+      "kms:ReEncrypt*",
+      "kms:GenerateDataKey*",
+      "kms:Describe*",
+    ]
+
+    resources = ["*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${var.region}.amazonaws.com"]
+    }
+
+    # Scoped to this account's log groups. Without the condition the grant is to
+    # the whole service, meaning any log group anywhere could ask to use the key.
+    condition {
+      test     = "ArnLike"
+      variable = "kms:EncryptionContext:aws:logs:arn"
+      values = [
+        "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:*",
+      ]
+    }
+  }
+
+  # Only needed once alarm_email is set and the SNS topic exists. Included now so
+  # turning alarms on later is a variable change rather than another failed apply.
+  statement {
+    sid = "AllowAlarmNotifications"
+
+    actions = [
+      "kms:Decrypt",
+      "kms:GenerateDataKey*",
+    ]
+
+    resources = ["*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudwatch.amazonaws.com", "sns.amazonaws.com"]
+    }
+  }
+}
+
 resource "aws_kms_key" "main" {
   description             = "${local.name} — activity history, tokens and credentials"
   enable_key_rotation     = true
   deletion_window_in_days = 7
+  policy                  = data.aws_iam_policy_document.kms.json
 }
 
 resource "aws_kms_alias" "main" {

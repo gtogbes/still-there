@@ -92,7 +92,25 @@ export async function handler(event: LambdaEvent): Promise<LambdaResponse> {
 
   const registry = await deviceRegistryFor(tables, householdId);
 
+  // Order matters, and an earlier version got it wrong. Both adapters were run and
+  // the result only treated as uninterpretable if *both* said 'invalid' — but the
+  // health adapter answers 'ignored' for anything that is not a status event, which
+  // masked the activity adapter's 'invalid' and quietly swallowed genuinely unknown
+  // event types as "ignored". That is precisely the silence the strict adapter
+  // exists to prevent.
+  //
+  // adaptActivityEvent already returns 'ignored' for device status types, so its
+  // verdict is authoritative: 'invalid' means nobody can read this payload.
   const activity = adaptActivityEvent(payload, registry);
+
+  if (activity.outcome === 'invalid') {
+    // Logged loudly because it means Ring's payload shape has moved, or ours has.
+    // Still a 200: a retry produces the identical failure, and a retry storm is
+    // worse than a loss we have already recorded.
+    console.error('could not interpret signed Ring payload', { reason: activity.reason });
+    return ok('uninterpretable');
+  }
+
   if (activity.outcome === 'ok') {
     const fresh = await claimRequestId(tables, activity.value.context.requestId, Date.now());
     if (!fresh) {
@@ -118,16 +136,16 @@ export async function handler(event: LambdaEvent): Promise<LambdaResponse> {
     return ok('device status recorded');
   }
 
-  if (activity.outcome === 'invalid' && health.outcome === 'invalid') {
-    // Logged loudly because it means Ring's payload shape has moved, or ours has.
-    // Still a 200: a retry would produce the identical failure.
-    console.error('could not interpret signed Ring payload', {
-      activityReason: activity.reason,
-      healthReason: health.reason,
+  if (health.outcome === 'invalid') {
+    console.error('could not interpret signed device status payload', {
+      reason: health.reason,
     });
     return ok('uninterpretable');
   }
 
+  // Understood, and deliberately not acted on. Subscription changes, door
+  // closures, unplaced devices.
+  console.log('ignored Ring event', { reason: activity.reason });
   return ok('ignored');
 }
 
