@@ -73,5 +73,10 @@ export async function getHousehold(
       ? (row['suppressions'] as SuppressionWindow[])
       : [],
     updatedAt: typeof row['updatedAt'] === 'number' ? row['updatedAt'] : 0,
+    // Spread conditionally rather than assigned, because exactOptionalPropertyTypes
+    // distinguishes an absent optional property from one explicitly set to undefined.
+    ...(typeof row['residentName'] === 'string' && row['residentName'] !== ''
+      ? { residentName: row['residentName'] }
+      : {}),
   };
 }

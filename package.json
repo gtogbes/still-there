@@ -16,9 +16,12 @@
     "check:creds": "node scripts/check-credentials.mjs",
     "check:creds:live": "node scripts/check-credentials.mjs --live",
     "build:lambda": "node scripts/build-lambda.mjs",
-    "seed": "node scripts/build-lambda.mjs && node dist/tools/seed-household.mjs"
+    "seed": "node scripts/build-lambda.mjs && node dist/tools/seed-household.mjs",
+    "demo": "node scripts/build-lambda.mjs > /dev/null && node dist/tools/demo-local.mjs",
+    "demo:live": "node scripts/build-lambda.mjs > /dev/null && node dist/tools/demo-live.mjs"
   },
   "devDependencies": {
+    "@aws-sdk/client-lambda": "^3.1137.0",
     "@types/node": "^24.10.1",
     "esbuild": "^0.28.2",
     "typescript": "5.9.3",

@@ -55,6 +55,9 @@ const doc = DynamoDBDocumentClient.from(new DynamoDBClient({ region }), {
 
 const config = {
   householdId,
+  // Optional in the data model, and worth setting: without it the notification says
+  // "the resident", which reads like a case file rather than somebody's mother.
+  residentName: ese.name,
   timeZone: ese.config.timeZone,
   interiorZones: ese.config.interiorZones,
   occupancySubjects: ese.config.occupancySubjects,

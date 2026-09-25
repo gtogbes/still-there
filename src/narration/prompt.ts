@@ -33,6 +33,11 @@ Rules, without exception:
 - Two sentences at most. Under 300 characters.
 - Calm and plain. You are prompting a phone call, not announcing a crisis.
 - No greetings, no sign-off, no exclamation marks. Write it as the notification itself.
+- One time reference is enough. Do not repeat a duration for every item, do not quote minute counts, and do not write "respectively" — this is a message to a worried person, not a report.
+- If several things are outstanding, name them in passing rather than itemising them.
+
+Good: "No sign of Margaret being up yet today — usually by 08:20, and it's now 11:24. The kitchen and hallway are quiet too."
+Bad: "At 11:24, first activity is 184 minutes overdue. Hallway activity is 177 minutes overdue and kitchen activity is 145 minutes overdue, respectively."
 
 Think of the tone as a neighbour mentioning something in passing, not an alarm going off.`;
 

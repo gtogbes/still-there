@@ -71,13 +71,18 @@ variable "narration_model_id" {
   description = <<-EOT
     Bedrock model used to phrase notifications.
 
-    Note that narration degrades rather than fails: if the model is unavailable, not
-    enabled in this account, or produces something the validator rejects, the
-    deterministic text is sent instead. So this can be left as-is and the product
-    still works.
+    Amazon Nova rather than Anthropic, for a practical reason. Claude models on
+    Bedrock require an Anthropic use-case form to be submitted for the account, and
+    until it is, calls fail with ResourceNotFoundException — an error that reads as
+    "this model does not exist" rather than "fill in a form". Nova needed no such
+    step. Either works; this one works out of the box.
+
+    Narration degrades rather than fails regardless: if the model is unavailable, not
+    enabled, or produces something the validator rejects, the deterministic text is
+    sent instead. The product does not depend on this value being right.
   EOT
   type        = string
-  default     = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+  default     = "us.amazon.nova-lite-v1:0"
 }
 
 variable "narration_model_regions" {

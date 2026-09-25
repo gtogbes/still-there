@@ -32,14 +32,24 @@ interface ScheduledEvent {
   readonly householdId?: string;
 }
 
-export async function handler(event: ScheduledEvent = {}): Promise<{
+export interface AssessmentSummary {
   readonly householdId: string;
   readonly evaluatedAt: number;
   readonly deviations: number;
   readonly blindSpots: number;
   readonly severity: string | null;
   readonly suppressed: boolean;
-}> {
+  /** The notification text, so a caller can see it without reading logs. */
+  readonly message: string;
+  /** 'model' when Bedrock wrote it, 'fallback' when the deterministic text was used. */
+  readonly narrationSource: string;
+  /** Why the model's output was not used, when it was not. */
+  readonly narrationRejection?: string;
+  /** The deterministic findings behind the message. */
+  readonly reasons: readonly string[];
+}
+
+export async function handler(event: ScheduledEvent = {}): Promise<AssessmentSummary> {
   const tables = tableNames(process.env);
   const householdId = event.householdId ?? process.env['HOUSEHOLD_ID'];
   if (householdId === undefined) throw new Error('HOUSEHOLD_ID must be set');
@@ -59,6 +69,9 @@ export async function handler(event: ScheduledEvent = {}): Promise<{
       blindSpots: 0,
       severity: null,
       suppressed: true,
+      message: '',
+      narrationSource: 'none',
+      reasons: [],
     };
   }
 
@@ -188,5 +201,9 @@ export async function handler(event: ScheduledEvent = {}): Promise<{
     blindSpots: blind.length,
     severity,
     suppressed: assessment.suppressed,
+    message: narration.text,
+    narrationSource: found.length === 0 ? 'none' : narration.source,
+    ...(narration.rejection === undefined ? {} : { narrationRejection: narration.rejection }),
+    reasons: [...found].sort((a, b) => b.minutesOverdue - a.minutesOverdue).map((f) => f.reason),
   };
 }
