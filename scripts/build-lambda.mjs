@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outdir = join(root, 'dist', 'handlers');
 
-const HANDLERS = ['webhook', 'token', 'link'];
+const HANDLERS = ['webhook', 'token', 'link', 'home'];
 
 await rm(join(root, 'dist'), { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });

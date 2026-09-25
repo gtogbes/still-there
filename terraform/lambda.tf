@@ -150,6 +150,7 @@ resource "aws_lambda_function" "handler" {
       STATE_TABLE         = aws_dynamodb_table.state.name
       HOUSEHOLD_ID        = var.household_id
       SIGN_IN_URL         = var.sign_in_url
+      REPO_URL            = var.repo_url
       RING_SECRET_ARN     = aws_secretsmanager_secret.ring.arn
       RING_API_BASE_URL   = "https://api.amazonvision.com"
       RING_OAUTH_BASE_URL = "https://oauth.ring.com"

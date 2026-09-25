@@ -65,6 +65,7 @@ locals {
     webhook = "POST /ring/webhook"
     token   = "POST /ring/token"
     link    = "GET /ring/link"
+    home    = "GET /"
   }
 }
 

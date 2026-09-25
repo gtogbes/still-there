@@ -55,6 +55,12 @@ variable "sign_in_url" {
   default     = "https://github.com/gtogbes/still-there"
 }
 
+variable "repo_url" {
+  description = "Public source repository, linked from the app homepage."
+  type        = string
+  default     = "https://github.com/gtogbes/still-there"
+}
+
 variable "log_retention_days" {
   description = "CloudWatch log retention. Logs here may contain device ids, so they do not live forever."
   type        = number

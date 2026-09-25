@@ -27,6 +27,11 @@ locals {
       timeout     = 10
       memory      = 256
     }
+    home = {
+      description = "Public app homepage. Serves static HTML and touches no data at all."
+      timeout     = 5
+      memory      = 128
+    }
   }
 }
 

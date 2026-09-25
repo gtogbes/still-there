@@ -15,7 +15,7 @@ output "webhook_url" {
 
 output "app_homepage_url" {
   description = "Paste into Ring Developer Portal → Account linking → App Homepage URL"
-  value       = var.sign_in_url
+  value       = "${aws_apigatewayv2_api.main.api_endpoint}/"
 }
 
 output "ring_secret_name" {
