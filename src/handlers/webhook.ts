@@ -1,5 +1,6 @@
 import { classifyRingPayload } from '../ring/classify.js';
 import { SIGNATURE_HEADER, verifyWebhookSignature } from '../ring/webhook.js';
+import { eraseAccount } from '../storage/erase.js';
 import { putEvent } from '../storage/events.js';
 import { claimRequestId, deviceRegistryFor, putDeviceHealth } from '../storage/state.js';
 import { tableNames } from '../storage/tables.js';
@@ -116,6 +117,37 @@ export async function handler(event: LambdaEvent): Promise<LambdaResponse> {
       // activity stream would make a camera dropping offline look like movement.
       await putDeviceHealth(tables, householdId, sample);
       return ok('device status recorded');
+    }
+
+    case 'revocation': {
+      const { accountId, context } = classified.revocation;
+      if (!(await claimRequestId(tables, context.requestId, Date.now()))) {
+        return ok('duplicate');
+      }
+
+      const report = await eraseAccount(tables, accountId, householdId);
+
+      // Logged without the account id. Recording that an erasure happened is
+      // necessary; keeping an identifier for the person who asked to be forgotten
+      // rather defeats the exercise.
+      console.log(
+        JSON.stringify({
+          message: 'consent withdrawn, household erased',
+          eventsDeleted: report.eventsDeleted,
+          stateRowsDeleted: report.stateRowsDeleted,
+          assessmentsDeleted: report.assessmentsDeleted,
+          partial: report.partial,
+        }),
+      );
+
+      if (report.partial) {
+        // A 500 makes Ring retry, and the erasure is safe to repeat — anything
+        // already deleted simply is not found the second time.
+        console.error('erasure incomplete, asking Ring to retry');
+        return { statusCode: 500, body: JSON.stringify({ status: 'erasure incomplete' }) };
+      }
+
+      return ok('erased');
     }
 
     case 'uninterpretable':

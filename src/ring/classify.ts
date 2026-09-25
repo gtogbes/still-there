@@ -1,5 +1,5 @@
-import { adaptActivityEvent, adaptDeviceHealth } from './adapter.js';
-import type { AdaptedActivity, AdaptedHealth } from './adapter.js';
+import { adaptActivityEvent, adaptDeviceHealth, adaptRevocation } from './adapter.js';
+import type { AdaptedActivity, AdaptedHealth, AdaptedRevocation } from './adapter.js';
 import type { DeviceRegistry } from './devices.js';
 
 /**
@@ -19,6 +19,8 @@ import type { DeviceRegistry } from './devices.js';
 export type Classification =
   | { readonly kind: 'activity'; readonly activity: AdaptedActivity }
   | { readonly kind: 'health'; readonly health: AdaptedHealth }
+  /** The user withdrew consent. Everything we hold about them must be erased. */
+  | { readonly kind: 'revocation'; readonly revocation: AdaptedRevocation }
   /** Understood and deliberately not acted on. */
   | { readonly kind: 'ignored'; readonly reason: string }
   /** Nobody can read this. Worth alerting on: it means a payload shape moved. */
@@ -40,6 +42,16 @@ export function classifyRingPayload(
 
   if (activity.outcome === 'ok') {
     return { kind: 'activity', activity: activity.value };
+  }
+
+  // Checked before health, and before the generic ignore, because a withdrawal of
+  // consent is the one message here that obliges us to act rather than record.
+  const revocation = adaptRevocation(payload);
+  if (revocation.outcome === 'ok') {
+    return { kind: 'revocation', revocation: revocation.value };
+  }
+  if (revocation.outcome === 'invalid') {
+    return { kind: 'uninterpretable', reason: revocation.reason };
   }
 
   const health = adaptDeviceHealth(payload, registry);

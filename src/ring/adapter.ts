@@ -74,14 +74,26 @@ const DEVICE_STATUS_TYPES: readonly string[] = ['device_online', 'device_offline
  * still surfaces as 'invalid'. The distinction is operational: 'invalid' should
  * alert somebody, and a subscription renewal should not.
  */
+/**
+ * The user has withdrawn consent. Everything we hold about them must go.
+ *
+ * Ring fires this when someone removes the integration from the Ring app, and it is
+ * the only signal we get. Treating it as just another ignorable notification would
+ * leave us holding a movement log of a home whose owner has explicitly told us to
+ * stop — and the public landing page promises otherwise in plain English.
+ */
+const REVOCATION_TYPES: readonly string[] = ['app_integration_removed'];
+
 const IGNORED_TYPES: readonly string[] = [
   'tamper_cleared',
   'device_added',
   'device_removed',
   'subscription_activated',
+  // Means stop calling the API, not erase the household. Ring restores access if
+  // they resubscribe, so deleting their history here would be destroying data over a
+  // lapsed payment.
   'subscription_deactivated',
   'app_integration_added',
-  'app_integration_removed',
   'flood_detected',
   'flood_cleared',
   'freeze_detected',
@@ -218,6 +230,9 @@ export function adaptActivityEvent(
   if (DEVICE_STATUS_TYPES.includes(eventType)) {
     return { outcome: 'ignored', reason: `'${eventType}' is a device status event, not activity` };
   }
+  if (REVOCATION_TYPES.includes(eventType)) {
+    return { outcome: 'ignored', reason: `'${eventType}' is a consent withdrawal, not activity` };
+  }
   if (IGNORED_TYPES.includes(eventType)) {
     return { outcome: 'ignored', reason: `'${eventType}' is not used by this product` };
   }
@@ -262,6 +277,38 @@ const NEVER_REPORTED_BEFORE = Date.parse('1971-01-01T00:00:00Z');
 
 export function hasEverReported(lastSeenAt: number): boolean {
   return lastSeenAt > NEVER_REPORTED_BEFORE;
+}
+
+export interface AdaptedRevocation {
+  readonly accountId: string;
+  readonly at: number;
+  readonly context: EnvelopeContext;
+}
+
+/**
+ * Recognises a consent withdrawal.
+ *
+ * Note this does not require the device to be mapped to a zone, unlike everything
+ * else. A revocation is about the account, not a device, and refusing to honour it
+ * because some camera was never placed would be an absurd reason to keep somebody's
+ * data.
+ */
+export function adaptRevocation(payload: unknown): AdaptResult<AdaptedRevocation> {
+  const envelope = readEnvelope(payload);
+  if (envelope.outcome !== 'ok') return envelope;
+  const { eventType, at, context } = envelope.value;
+
+  if (!REVOCATION_TYPES.includes(eventType)) {
+    return { outcome: 'ignored', reason: `'${eventType}' is not a revocation` };
+  }
+
+  if (context.accountId === '') {
+    // Without an account id we cannot tell whose data to erase, and guessing would
+    // mean deleting the wrong household's history.
+    return { outcome: 'invalid', reason: 'revocation carried no meta.account_id' };
+  }
+
+  return { outcome: 'ok', value: { accountId: context.accountId, at, context } };
 }
 
 export function adaptDeviceHealth(

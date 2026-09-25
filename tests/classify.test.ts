@@ -76,3 +76,46 @@ describe('classifying an inbound payload', () => {
     }
   });
 });
+
+describe('consent withdrawal', () => {
+  it('recognises a removed integration as a revocation', () => {
+    const result = classifyRingPayload(webhook('app_integration_removed'), registry);
+    expect(result.kind).toBe('revocation');
+    if (result.kind !== 'revocation') return;
+    expect(result.revocation.accountId).toBe('acct');
+  });
+
+  it('honours a revocation even for a device nobody mapped', () => {
+    // A revocation is about the account, not a device. Refusing to erase somebody's
+    // data because a camera was never assigned to a room would be an absurd reason
+    // to keep it.
+    const result = classifyRingPayload(
+      webhook('app_integration_removed', 'dev-never-placed'),
+      registry,
+    );
+    expect(result.kind).toBe('revocation');
+  });
+
+  it('refuses a revocation with no account id rather than guessing', () => {
+    // Erasure is destructive and irreversible. Without knowing whose data to remove,
+    // acting anyway would mean deleting the wrong household's history.
+    const anonymous = {
+      meta: { version: '1.1', time: '2026-09-25T10:00:00Z', request_id: 'r' },
+      data: {
+        id: 'e',
+        type: 'app_integration_removed',
+        attributes: { source: 'dev-hallway', source_type: 'devices', timestamp: 1 },
+      },
+    };
+    const result = classifyRingPayload(anonymous, registry);
+    expect(result.kind).toBe('uninterpretable');
+  });
+
+  it('does not treat a lapsed subscription as consent withdrawal', () => {
+    // subscription_deactivated means stop calling the API, not erase the household.
+    // Ring restores access on resubscription, so deleting a movement history over a
+    // missed payment would be destroying data the user never asked us to destroy.
+    const result = classifyRingPayload(webhook('subscription_deactivated'), registry);
+    expect(result.kind).toBe('ignored');
+  });
+});

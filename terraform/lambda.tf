@@ -48,13 +48,16 @@ resource "aws_iam_role_policy" "logging" {
 # The webhook writes events and device health, claims request ids, and reads the
 # device map. It has no business reading OAuth tokens.
 data "aws_iam_policy_document" "webhook" {
+  # Query and Delete are here for one reason: when Ring reports that a user removed
+  # the integration, this handler erases everything held about them. Write-only
+  # access would leave us unable to honour a withdrawal of consent.
   statement {
-    actions   = ["dynamodb:PutItem"]
+    actions   = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:DeleteItem", "dynamodb:BatchWriteItem"]
     resources = [aws_dynamodb_table.events.arn]
   }
 
   statement {
-    actions   = ["dynamodb:PutItem", "dynamodb:Query"]
+    actions   = ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:DeleteItem", "dynamodb:BatchWriteItem"]
     resources = [aws_dynamodb_table.state.arn]
   }
 

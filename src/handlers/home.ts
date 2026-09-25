@@ -209,17 +209,27 @@ function page(repoUrl: string): string {
     <h3>Disconnecting</h3>
     <p>
       Remove StillThere in the <strong>Ring app</strong>, under your account&rsquo;s
-      connected apps. That is the real control: Ring revokes our access immediately and
-      tells us it has done so, and we stop receiving events and delete the tokens we
-      hold.
+      connected apps. That is the real control, not a button here: Ring revokes our
+      access immediately and tells us it has done so.
+    </p>
+    <p>
+      When that message arrives we <strong>delete everything</strong> &mdash; the
+      access tokens, the event history, the learned routine, the room assignments and
+      the record of past notifications. Not marked for expiry. Deleted. Expiry is not
+      erasure, and you did not ask us to keep it for another ninety days.
     </p>
 
-    <h3>What we keep</h3>
+    <h3>What we keep while you&rsquo;re connected</h3>
     <ul class="plain">
-      <li>Event records &mdash; which device, what kind of movement, when. Deleted after 90 days.</li>
+      <li>
+        Event records &mdash; which device, what kind of movement, when. Automatically
+        deleted after 90 days even if you stay connected.
+      </li>
       <li>Which room each device is in, so movement indoors can be told from movement outside.</li>
-      <li>Encrypted access tokens for your Ring account, deleted when you disconnect.</li>
+      <li>Encrypted access tokens for your Ring account.</li>
+      <li>A record of any notification sent, so &ldquo;why did you contact me that Tuesday&rdquo; has an answer.</li>
     </ul>
+    <p class="quiet">No video. No images, unless something genuinely looks wrong &mdash; and we record it when that happens.</p>
 
     <hr>
 
