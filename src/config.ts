@@ -7,8 +7,16 @@
  * found.
  */
 
-export type RingEnvironment = 'sandbox' | 'production';
-
+/**
+ * Note on what is deliberately absent.
+ *
+ * There was a `RING_ENVIRONMENT` setting here, offering a choice between 'sandbox'
+ * and 'production'. It has been removed because it was a lie: Ring publishes one
+ * API base — `api.amazonvision.com` — and there is no separate sandbox endpoint to
+ * point at. The deployed handlers never read it either. A configuration knob that
+ * looks meaningful and changes nothing is worse than no knob at all, because
+ * somebody eventually trusts it.
+ */
 export interface RingConfig {
   readonly clientId: string;
   readonly clientSecret: string;
@@ -16,7 +24,6 @@ export interface RingConfig {
   readonly apiBaseUrl: string;
   readonly oauthBaseUrl: string;
   readonly webhookUrl: string;
-  readonly environment: RingEnvironment;
 }
 
 export class ConfigError extends Error {
@@ -72,13 +79,6 @@ function optional(
 }
 
 export function loadRingConfig(source: Record<string, string | undefined>): RingConfig {
-  const environment = optional(source, 'RING_ENVIRONMENT', 'sandbox');
-  if (environment !== 'sandbox' && environment !== 'production') {
-    throw new ConfigError(
-      `RING_ENVIRONMENT must be 'sandbox' or 'production', received '${environment}'.`,
-    );
-  }
-
   return {
     clientId: required(source, 'RING_CLIENT_ID'),
     clientSecret: required(source, 'RING_CLIENT_SECRET'),
@@ -86,7 +86,6 @@ export function loadRingConfig(source: Record<string, string | undefined>): Ring
     apiBaseUrl: optional(source, 'RING_API_BASE_URL', DEFAULTS.apiBaseUrl),
     oauthBaseUrl: optional(source, 'RING_OAUTH_BASE_URL', DEFAULTS.oauthBaseUrl),
     webhookUrl: optional(source, 'RING_WEBHOOK_URL', ''),
-    environment,
   };
 }
 
@@ -98,7 +97,6 @@ export function loadRingConfig(source: Record<string, string | undefined>): Ring
 export function describeConfig(config: RingConfig): Record<string, string> {
   const present = (value: string): string => (value === '' ? 'missing' : `set (${value.length} chars)`);
   return {
-    environment: config.environment,
     apiBaseUrl: config.apiBaseUrl,
     oauthBaseUrl: config.oauthBaseUrl,
     webhookUrl: config.webhookUrl === '' ? 'missing' : config.webhookUrl,

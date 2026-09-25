@@ -55,6 +55,43 @@ variable "sign_in_url" {
   default     = "https://github.com/gtogbes/still-there"
 }
 
+variable "notify_email" {
+  description = <<-EOT
+    Address that receives welfare notifications.
+
+    Kept separate from alarm_email on purpose. Operational noise and "your mother has
+    not been up today" must not arrive in the same stream, or the second one stops
+    being read. Leave empty to create the topic without a subscriber.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "narration_model_id" {
+  description = <<-EOT
+    Bedrock model used to phrase notifications.
+
+    Note that narration degrades rather than fails: if the model is unavailable, not
+    enabled in this account, or produces something the validator rejects, the
+    deterministic text is sent instead. So this can be left as-is and the product
+    still works.
+  EOT
+  type        = string
+  default     = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+}
+
+variable "narration_model_regions" {
+  description = <<-EOT
+    Regions a cross-region inference profile may route to.
+
+    Needed because the IAM policy must permit the underlying foundation model in each
+    regional target, not just the profile itself. Omitting them produces an
+    AccessDenied whose cause is very hard to see.
+  EOT
+  type        = list(string)
+  default     = ["us-east-1", "us-east-2", "us-west-2"]
+}
+
 variable "assessment_enabled" {
   description = <<-EOT
     Whether the scheduled assessment runs.

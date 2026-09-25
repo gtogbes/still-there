@@ -15,6 +15,14 @@ import { documentClient, type TableNames } from './tables.js';
 export interface StoredHousehold extends HouseholdConfig {
   readonly suppressions: readonly SuppressionWindow[];
   readonly updatedAt: number;
+  /**
+   * What the resident is called, if the family chose to tell us.
+   *
+   * Optional on purpose. "No activity in the kitchen yet today" works without a
+   * name, and storing one is a choice the household makes rather than a field we
+   * insist on filling.
+   */
+  readonly residentName?: string;
 }
 
 export async function putHousehold(

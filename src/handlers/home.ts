@@ -1,19 +1,16 @@
 /**
- * App Homepage.
+ * Public landing page.
  *
- * Ring sends users here after linking completes, and lists it as where they manage
- * their connection. It is reachable by anyone who has the URL.
+ * Its first job is to explain StillThere to somebody who has never heard of it —
+ * Ring calls this the App Homepage and sends users here after linking, and it is
+ * the page anyone evaluating the project will click first.
  *
- * Which decides what it can contain. This page deliberately shows no device names,
- * no zones, no timings and no activity, because all of that is a movement log of
- * somebody's home and this endpoint has no authentication. Anything personal waits
- * behind sign-in.
+ * Its second job is connection management, which is why the practical sections sit
+ * below the explanation rather than above it.
  *
- * What it can honestly offer is the part users actually need: an explanation of what
- * the integration does, and how to revoke it. Revocation genuinely lives in the Ring
- * app rather than here — Ring lets a user remove an integration directly, which fires
- * `app_integration_removed` and invalidates our tokens. Pointing at the real control
- * beats building a worse copy of it.
+ * Hard constraint either way: this URL is public and unauthenticated, so it shows no
+ * device names, no rooms, no timings and no activity. That is a movement log of
+ * somebody's home. Anything personal waits behind sign-in.
  */
 
 interface LambdaResponse {
@@ -31,58 +28,172 @@ function escapeHtml(value: string): string {
 }
 
 function page(repoUrl: string): string {
+  const repo = escapeHtml(repoUrl);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StillThere</title>
+  <title>StillThere — notices the things that didn't happen</title>
+  <meta name="description" content="StillThere learns an older relative's daily routine from their Ring devices and tells family when the usual activity doesn't happen.">
   <meta name="robots" content="noindex">
-  <meta name="description" content="StillThere notices when an older relative's usual daily activity does not happen.">
   <style>
-    :root { color-scheme: light dark; }
-    * { box-sizing: border-box; }
-    body {
-      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
-      margin: 0 auto; padding: 2rem 1.25rem; max-width: 40rem;
-      /* 15.8:1 against the background, comfortably past WCAG AA. */
-      color: #1a1a1a; background: #fdfdfc;
+    :root {
+      color-scheme: light dark;
+      --ink: #1a1a1a;
+      --muted: #55595e;
+      --bg: #fdfdfc;
+      --card: #ffffff;
+      --line: #e4e2de;
+      --link: #0a55ad;
+      --accent: #7a5cff;
     }
     @media (prefers-color-scheme: dark) {
-      body { color: #ececec; background: #16181a; }
-      .card { background: #1f2224 !important; border-color: #33383b !important; }
-      a { color: #7fb3ff !important; }
+      :root {
+        --ink: #ededed;
+        --muted: #a9adb3;
+        --bg: #15171a;
+        --card: #1e2125;
+        --line: #32373c;
+        --link: #86b8ff;
+        --accent: #a892ff;
+      }
     }
-    h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
-    .tagline { color: #5a5a5a; margin: 0 0 2rem; }
-    @media (prefers-color-scheme: dark) { .tagline { color: #a8a8a8; } }
-    h2 { font-size: 1.05rem; margin: 2rem 0 .5rem; }
-    .card { border: 1px solid #e3e1dd; border-radius: 10px; padding: 1rem 1.25rem; background: #fff; }
-    ol, ul { padding-left: 1.25rem; }
-    li { margin: .35rem 0; }
-    a { color: #0b5fbf; }
-    a:focus-visible { outline: 3px solid #0b5fbf; outline-offset: 2px; border-radius: 2px; }
-    footer { margin-top: 2.5rem; font-size: .875rem; color: #5a5a5a; }
-    @media (prefers-color-scheme: dark) { footer { color: #a8a8a8; } }
+    * { box-sizing: border-box; }
+    body {
+      font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--ink); background: var(--bg);
+      margin: 0 auto; padding: 3rem 1.25rem 4rem; max-width: 44rem;
+    }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); line-height: 1.15; margin: 0 0 .5rem; letter-spacing: -.02em; }
+    .lede { font-size: 1.15rem; color: var(--muted); margin: 0 0 2.5rem; }
+    h2 { font-size: 1.2rem; margin: 2.75rem 0 .75rem; letter-spacing: -.01em; }
+    h3 { font-size: 1rem; margin: 1.5rem 0 .35rem; }
+    p, li { color: var(--ink); }
+    .quiet { color: var(--muted); }
+    .card { border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.35rem; background: var(--card); margin: 1rem 0; }
+    .alert {
+      border-left: 3px solid var(--accent);
+      background: var(--card); border-radius: 8px;
+      padding: .9rem 1.15rem; margin: 1rem 0;
+      font-size: .97rem;
+    }
+    .alert p { margin: 0; }
+    .alert .meta { color: var(--muted); font-size: .85rem; margin-top: .4rem; }
+    ol.steps { list-style: none; counter-reset: s; padding: 0; }
+    ol.steps > li { counter-increment: s; position: relative; padding-left: 2.4rem; margin: 1.15rem 0; }
+    ol.steps > li::before {
+      content: counter(s);
+      position: absolute; left: 0; top: .05rem;
+      width: 1.65rem; height: 1.65rem; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      display: grid; place-items: center;
+      font-size: .85rem; font-weight: 600;
+    }
+    ul.plain { padding-left: 1.2rem; }
+    ul.plain li { margin: .4rem 0; }
+    a { color: var(--link); }
+    a:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; border-radius: 3px; }
+    hr { border: 0; border-top: 1px solid var(--line); margin: 3rem 0 1.5rem; }
+    footer { font-size: .875rem; color: var(--muted); }
+    footer p { margin: .5rem 0; }
+    .tag {
+      display: inline-block; font-size: .75rem; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--muted);
+      border: 1px solid var(--line); border-radius: 100px;
+      padding: .2rem .7rem; margin-bottom: 1.25rem;
+    }
   </style>
 </head>
 <body>
   <main>
-    <h1>StillThere</h1>
-    <p class="tagline">Notices the things that didn&rsquo;t happen.</p>
+    <p class="tag">Early build</p>
+    <h1>Notices the things that didn&rsquo;t happen.</h1>
+    <p class="lede">
+      StillThere learns the daily rhythm of an older relative&rsquo;s home from the Ring
+      devices already on the wall, and gets in touch when the usual activity
+      <strong>doesn&rsquo;t</strong> happen.
+    </p>
 
+    <h2>The problem</h2>
+    <p>
+      If you have a parent living alone, you probably check in when you remember, and
+      worry in between. Security cameras are no help: they tell you when something
+      happens. The thing you actually dread is a day when <em>nothing</em> does.
+    </p>
+    <p>
+      Panic buttons only work if someone can press them. Watching a live feed all day
+      is neither practical nor a way anyone wants to live.
+    </p>
+
+    <h2>What StillThere does instead</h2>
+    <ol class="steps">
+      <li>
+        <h3>It learns the routine</h3>
+        <p class="quiet">
+          Over a few weeks it works out the shape of an ordinary day — up and about by
+          about half seven, out for the paper, in the kitchen by eight. It only treats
+          something as a habit if it holds on more than nineteen days in twenty.
+          Anything less is a coincidence, and nobody needs alerting about those.
+        </p>
+      </li>
+      <li>
+        <h3>It watches for what&rsquo;s missing</h3>
+        <p class="quiet">
+          Once the usual time has passed &mdash; plus a margin sized to how variable
+          that particular person is &mdash; and the thing still hasn&rsquo;t happened,
+          it says so.
+        </p>
+      </li>
+      <li>
+        <h3>It explains itself</h3>
+        <p class="quiet">Not an alarm. A nudge, with its reasoning attached:</p>
+        <div class="alert">
+          <p>No sign of activity in the hallway yet today.</p>
+          <p class="meta">
+            Usually by 07:32. Seen on 30 of the last 30 working days. It&rsquo;s now
+            11:24 &mdash; about two and a half hours later than normal.
+          </p>
+        </div>
+        <p class="quiet">
+          You decide whether that means anything. Most days it will say nothing at all,
+          which is the point.
+        </p>
+      </li>
+    </ol>
+
+    <h2>What it doesn&rsquo;t do</h2>
     <div class="card">
-      <p>
-        StillThere learns the daily rhythm of a household from its Ring devices &mdash;
-        movement indoors, a door opening &mdash; and gets in touch with family when the
-        usual activity <strong>doesn&rsquo;t</strong> occur. Not an alarm. A nudge, with its
-        reasoning attached.
-      </p>
-      <p>
-        It reads event records rather than watching video, and only looks at an image
-        if something genuinely appears wrong.
-      </p>
+      <ul class="plain">
+        <li><strong>No live feed to watch.</strong> It reads event records, not video.</li>
+        <li>
+          <strong>No footage stored, ever.</strong> It looks at a single image only if
+          something genuinely appears wrong, and records that it did so.
+        </li>
+        <li>
+          <strong>No new hardware.</strong> It uses the Ring devices already installed.
+        </li>
+        <li>
+          <strong>It won&rsquo;t mistake the cat for your mother.</strong> Ring tells us
+          whether movement looked like a person, and only a person counts as someone
+          being up.
+        </li>
+        <li>
+          <strong>It won&rsquo;t cry wolf over a flat battery.</strong> Before concluding
+          nothing happened, it checks the cameras were actually working. If they
+          weren&rsquo;t, it says so &mdash; that&rsquo;s a maintenance job, not a
+          welfare alert.
+        </li>
+      </ul>
     </div>
+
+    <h2>Who it&rsquo;s for</h2>
+    <p>
+      Adult children of a parent living alone who want reassurance without surveillance,
+      and without asking someone in their eighties to wear or charge anything.
+    </p>
+
+    <hr>
 
     <h2>Managing your connection</h2>
     <p>
@@ -90,34 +201,34 @@ function page(repoUrl: string): string {
       appears on this page.
     </p>
     <p>
-      <strong>The sign-in surface is not part of this preview.</strong> StillThere is an
-      early build: the Ring integration, the routine learning and the alerting all work,
-      and the account screens do not exist yet. Disconnecting is unaffected &mdash; see
-      below, it is handled entirely in the Ring app.
+      <strong>The sign-in screens are not part of this build yet.</strong> The Ring
+      integration, the routine learning and the alerting all work; the account pages
+      do not exist. Disconnecting is unaffected &mdash; see below.
     </p>
 
-    <h2>Disconnecting</h2>
+    <h3>Disconnecting</h3>
     <p>
-      Remove the StillThere integration in the <strong>Ring app</strong>, under your
-      account&rsquo;s connected apps. That is the authoritative control: Ring revokes our
-      access immediately and tells us it has done so, at which point we stop receiving
-      events and delete the tokens we hold.
+      Remove StillThere in the <strong>Ring app</strong>, under your account&rsquo;s
+      connected apps. That is the real control: Ring revokes our access immediately and
+      tells us it has done so, and we stop receiving events and delete the tokens we
+      hold.
     </p>
 
-    <h2>What we keep</h2>
-    <ul>
-      <li>Event records &mdash; which device, what kind, when. Deleted after 90 days.</li>
+    <h3>What we keep</h3>
+    <ul class="plain">
+      <li>Event records &mdash; which device, what kind of movement, when. Deleted after 90 days.</li>
       <li>Which room each device is in, so movement indoors can be told from movement outside.</li>
-      <li>Access tokens for your Ring account, encrypted, deleted when you disconnect.</li>
+      <li>Encrypted access tokens for your Ring account, deleted when you disconnect.</li>
     </ul>
-    <p>No video or images are stored.</p>
+
+    <hr>
 
     <footer>
       <p>
-        A hackathon project, not a medical or emergency service. In an emergency,
-        contact your local emergency number.
+        A hackathon project, not a medical or emergency service, and not a substitute
+        for one. In an emergency, call your local emergency number.
       </p>
-      <p><a href="${escapeHtml(repoUrl)}">Source code</a></p>
+      <p>Open source, MIT licensed. <a href="${repo}">Read the code</a>.</p>
     </footer>
   </main>
 </body>
@@ -131,10 +242,9 @@ export async function handler(): Promise<LambdaResponse> {
     statusCode: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      // No personal data here, but no reason to let it be cached for long either.
       'Cache-Control': 'public, max-age=300',
-      // Nothing is loaded from anywhere else and there is no script, so the policy
-      // can be this tight.
+      // Nothing is fetched from anywhere and there is no script, so the policy can
+      // be this tight. Inline styles are the only exception.
       'Content-Security-Policy':
         "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
       'X-Content-Type-Options': 'nosniff',

@@ -59,4 +59,4 @@ export {
 export type { VerificationResult } from './ring/webhook.js';
 
 export { ConfigError, describeConfig, loadRingConfig } from './config.js';
-export type { RingConfig, RingEnvironment } from './config.js';
+export type { RingConfig } from './config.js';

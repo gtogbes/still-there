@@ -176,6 +176,8 @@ resource "aws_lambda_function" "handler" {
       HOUSEHOLD_ID        = var.household_id
       SIGN_IN_URL         = var.sign_in_url
       REPO_URL            = var.repo_url
+      NOTIFY_TOPIC_ARN    = aws_sns_topic.notifications.arn
+      NARRATION_MODEL_ID  = var.narration_model_id
       RING_SECRET_ARN     = aws_secretsmanager_secret.ring.arn
       RING_API_BASE_URL   = "https://api.amazonvision.com"
       RING_OAUTH_BASE_URL = "https://oauth.ring.com"

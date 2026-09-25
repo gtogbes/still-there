@@ -136,6 +136,8 @@ export function assess(input: AssessInput): Assessment {
         expectedByMinute: expectedBy,
         evaluatedAtMinute: minutesOfDay,
         minutesOverdue,
+        presentDays: anchor.presentDays,
+        observedDays: anchor.observedDays,
         // Never escalate what we cannot see. A blind spot is a maintenance job,
         // not a welfare emergency, and dressing it up as one is how families
         // learn to ignore the alerts that matter.
@@ -153,6 +155,8 @@ export function assess(input: AssessInput): Assessment {
       expectedByMinute: expectedBy,
       evaluatedAtMinute: minutesOfDay,
       minutesOverdue,
+      presentDays: anchor.presentDays,
+      observedDays: anchor.observedDays,
       severity: severityFor(minutesOverdue),
       reason: `No ${anchor.label} yet today. Usually by ${formatMinute(anchor.medianMinute)} (allowing until ${formatMinute(expectedBy)}), seen on ${anchor.presentDays} of the last ${anchor.observedDays} ${dayClass === 'weekday' ? 'working days' : 'weekend days'}. It is now ${formatMinute(minutesOfDay)}, ${minutesOverdue} minutes past.`,
     });

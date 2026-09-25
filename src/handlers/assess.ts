@@ -1,6 +1,8 @@
 import { learnBaseline } from '../domain/baseline.js';
 import { assess, blindSpots, deviations, peakSeverity } from '../domain/deviation.js';
-import { addDays, fromLocal, localParts } from '../domain/time.js';
+import { addDays, formatMinute, fromLocal, localParts } from '../domain/time.js';
+import { narrate, type Narration } from '../narration/narrate.js';
+import { publishNotification, type NotifyResult } from '../notify/publish.js';
 import { eventsBetween } from '../storage/events.js';
 import { getHousehold } from '../storage/household.js';
 import { deviceHealthFor } from '../storage/state.js';
@@ -94,6 +96,28 @@ export async function handler(event: ScheduledEvent = {}): Promise<{
     eventsToday: todaysEvents.length,
   });
 
+  // Narrate and notify only when there is something real to say. Blind spots are
+  // deliberately excluded: a camera that stopped reporting is a maintenance job, and
+  // routing it to family alongside genuine welfare nudges is how the whole channel
+  // gets muted.
+  let narration: Narration = { text: '', source: 'fallback' };
+  let delivery: NotifyResult = { delivered: false, reason: 'nothing to report' };
+
+  if (found.length > 0 && severity !== null) {
+    narration = await narrate({
+      findings: found,
+      severity,
+      localTime: formatMinute(localParts(evaluatedAt, household.timeZone).minutesOfDay),
+      ...(household.residentName === undefined ? {} : { residentName: household.residentName }),
+    });
+
+    delivery = await publishNotification(
+      process.env['NOTIFY_TOPIC_ARN'] ?? '',
+      severity,
+      narration.text,
+    );
+  }
+
   // Structured so it can be queried in CloudWatch Logs Insights, and so the
   // reasoning is recoverable after the fact. Findings carry their own explanation
   // by design, which makes the log the audit trail for why a family was contacted.
@@ -115,6 +139,16 @@ export async function handler(event: ScheduledEvent = {}): Promise<{
         reason: f.reason,
       })),
       blindSpots: blind.map((f) => ({ anchor: f.anchorKey, reason: f.reason })),
+      // Recorded so the effect of the model is auditable. A rising 'fallback' rate
+      // means the prompt or the model has drifted, and the only other symptom would
+      // be notifications quietly getting blunter over time.
+      notification: {
+        text: narration.text,
+        source: narration.source,
+        rejection: narration.rejection,
+        delivered: delivery.delivered,
+        deliveryFailure: delivery.reason,
+      },
     }),
   );
 

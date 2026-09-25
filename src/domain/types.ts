@@ -151,6 +151,13 @@ export interface Finding {
   readonly evaluatedAtMinute: number;
   readonly minutesOverdue: number;
   readonly severity: Severity;
+  /**
+   * How dependable this habit was, carried on the finding itself rather than only
+   * embedded in the prose. The narration layer needs the numbers, and re-parsing
+   * them back out of an English sentence would be absurd.
+   */
+  readonly presentDays: number;
+  readonly observedDays: number;
   /** Deterministic, factual English. Safe to show a human as-is. */
   readonly reason: string;
 }

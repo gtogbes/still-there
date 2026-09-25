@@ -13,13 +13,6 @@ describe('configuration loading', () => {
     expect(config.clientId).toBe('client-id-value');
     expect(config.apiBaseUrl).toBe('https://api.amazonvision.com');
     expect(config.oauthBaseUrl).toBe('https://oauth.ring.com');
-    expect(config.environment).toBe('sandbox');
-  });
-
-  it('defaults to sandbox rather than production', () => {
-    // The safe default. Sandbox uses synthetic devices, so an unconfigured
-    // deployment cannot accidentally read a real household's data.
-    expect(loadRingConfig(complete).environment).toBe('sandbox');
   });
 
   it('names the variable that is missing', () => {
@@ -65,11 +58,6 @@ describe('configuration loading', () => {
     expect(() => loadRingConfig({ ...complete, RING_HMAC_KEY: '""' })).toThrow(ConfigError);
   });
 
-  it('rejects an unknown environment', () => {
-    expect(() => loadRingConfig({ ...complete, RING_ENVIRONMENT: 'staging' })).toThrow(
-      /sandbox.*production/,
-    );
-  });
 });
 
 describe('describing configuration for logs', () => {
