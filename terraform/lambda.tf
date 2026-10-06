@@ -146,6 +146,33 @@ resource "aws_iam_role_policy" "assess" {
   policy = data.aws_iam_policy_document.assess.json
 }
 
+# The MCP server answers questions and can pause monitoring. It reads activity and
+# writes only the household record, which is where suppression windows live. No
+# access to the Ring credentials — it never calls Ring — and no DeleteItem, so a
+# misbehaving client cannot erase a history through it.
+data "aws_iam_policy_document" "mcp" {
+  statement {
+    actions   = ["dynamodb:Query"]
+    resources = [aws_dynamodb_table.events.arn]
+  }
+
+  statement {
+    actions   = ["dynamodb:Query", "dynamodb:GetItem", "dynamodb:PutItem"]
+    resources = [aws_dynamodb_table.state.arn]
+  }
+
+  statement {
+    actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
+    resources = [aws_kms_key.main.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "mcp" {
+  name   = "access"
+  role   = aws_iam_role.handler["mcp"].id
+  policy = data.aws_iam_policy_document.mcp.json
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Functions
 # ──────────────────────────────────────────────────────────────────────────────

@@ -66,6 +66,7 @@ locals {
     token   = "POST /ring/token"
     link    = "GET /ring/link"
     home    = "GET /"
+    mcp     = "POST /mcp"
   }
 }
 

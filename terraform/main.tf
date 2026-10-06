@@ -37,6 +37,11 @@ locals {
       timeout     = 60
       memory      = 1024
     }
+    mcp = {
+      description = "MCP server over Streamable HTTP. Lets Alexa+ ask about the household."
+      timeout     = 30
+      memory      = 1024
+    }
   }
 }
 

@@ -148,6 +148,13 @@ export interface Finding {
   readonly zone: string | null;
   /** Local minute-of-day by which we expected to have seen this. */
   readonly expectedByMinute: number;
+  /**
+   * The habit's typical time, as distinct from its deadline.
+   *
+   * Both are needed for different audiences. "Allowing until 08:28" explains why the
+   * system waited; "usually by 07:31" is what a person says out loud.
+   */
+  readonly medianMinute: number;
   readonly evaluatedAtMinute: number;
   readonly minutesOverdue: number;
   readonly severity: Severity;

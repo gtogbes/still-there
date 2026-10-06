@@ -17,6 +17,7 @@ const finding = (overrides: Partial<Finding> = {}): Finding => ({
   label: 'activity in the kitchen',
   zone: 'kitchen',
   expectedByMinute: 9 * 60,
+  medianMinute: 8 * 60 + 11,
   evaluatedAtMinute: 11 * 60 + 24,
   minutesOverdue: 144,
   presentDays: 30,

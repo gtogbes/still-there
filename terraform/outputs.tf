@@ -47,3 +47,8 @@ output "log_groups" {
   description = "Where to look when a webhook does not behave."
   value       = [for k, v in aws_cloudwatch_log_group.handler : v.name]
 }
+
+output "mcp_url" {
+  description = "MCP endpoint, Streamable HTTP. This is the Alexa+ integration surface."
+  value       = "${aws_apigatewayv2_api.main.api_endpoint}/mcp"
+}
