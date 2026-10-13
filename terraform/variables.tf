@@ -175,3 +175,16 @@ variable "hosted_zone_name" {
   type        = string
   default     = ""
 }
+
+variable "extra_allowed_origins" {
+  description = <<-EOT
+    Further browser origins allowed to call the MCP endpoint, as full origins
+    ("https://d123.cloudfront.net"). The custom domain is added automatically.
+
+    The MCP Streamable HTTP spec requires a 403 for any request whose Origin header
+    is present and not allowed. Requests without an Origin (server-to-server MCP
+    clients) are unaffected.
+  EOT
+  type        = list(string)
+  default     = []
+}

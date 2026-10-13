@@ -19,6 +19,10 @@ export default defineConfig({
         target: process.env['STILL_THERE_API'] ?? 'https://eop88u898f.execute-api.us-east-1.amazonaws.com',
         changeOrigin: true,
         rewrite: () => '/mcp',
+        // The MCP server rejects unknown browser Origins with 403, as the spec
+        // requires. Through the dev proxy the request is server-to-server, so the
+        // localhost Origin is dropped rather than added to the production allow-list.
+        configure: (proxy) => proxy.on('proxyReq', (req) => req.removeHeader('origin')),
       },
       // The assistant route exists on the API under the same path, so it is passed
       // through unchanged. Without this, typed and spoken questions 404 in dev.

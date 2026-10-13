@@ -1,6 +1,7 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { buildMcpServer } from '../mcp/server.js';
 import { clockFor, DEMO_MINUTE_HEADER, headerValue, parseDemoMinute } from '../mcp/demo-clock.js';
+// headerValue is shared with the demo clock: case-insensitive lookup on API Gateway's header map.
 import { tableNames } from '../storage/tables.js';
 import { checkAccess } from './access.js';
 
@@ -62,7 +63,50 @@ function toRequest(event: LambdaEvent, url: string): Request {
   });
 }
 
+function jsonRpcError(statusCode: number, code: number, message: string, headers: Record<string, string> = {}): LambdaResponse {
+  return {
+    statusCode,
+    headers: { 'Content-Type': 'application/json', ...headers },
+    // No id: these are refused before any JSON-RPC message is read, which is what
+    // the spec asks for in exactly this situation.
+    body: JSON.stringify({ jsonrpc: '2.0', error: { code, message }, id: null }),
+  };
+}
+
+/**
+ * Origins allowed to call the MCP endpoint from a browser.
+ *
+ * The Streamable HTTP spec requires servers to validate Origin on every request and
+ * answer an invalid one with 403, as the defence against DNS rebinding. Requests with
+ * no Origin at all are server-to-server — Alexa+, the assistant, the Inspector — and
+ * are allowed through to the access check, because a browser always sends one on a
+ * cross-origin POST.
+ */
+export function allowedOrigins(env: Record<string, string | undefined>): Set<string> {
+  return new Set(
+    (env['ALLOWED_ORIGINS'] ?? '')
+      .split(',')
+      .map((o) => o.trim().replace(/\/$/, ''))
+      .filter((o) => o !== ''),
+  );
+}
+
 export async function handler(event: LambdaEvent): Promise<LambdaResponse> {
+  // This server offers no SSE stream and no sessions, so GET and DELETE are refused
+  // the way the spec describes: 405, with Allow saying what is supported. Checked
+  // before anything else, because there is nothing to authenticate for.
+  const method = (event.requestContext?.http?.method ?? 'POST').toUpperCase();
+  if (method !== 'POST') {
+    return jsonRpcError(405, -32000, 'Method not allowed: this server is stateless and offers no SSE stream', {
+      Allow: 'POST',
+    });
+  }
+
+  const origin = headerValue(event.headers, 'origin');
+  if (origin !== undefined && !allowedOrigins(process.env).has(origin.replace(/\/$/, ''))) {
+    return jsonRpcError(403, -32000, 'Forbidden: origin not allowed');
+  }
+
   const householdId = process.env['HOUSEHOLD_ID'];
   if (householdId === undefined) {
     console.error('HOUSEHOLD_ID must be set');

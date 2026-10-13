@@ -293,6 +293,13 @@ resource "aws_lambda_function" "handler" {
       # The variable, not the distribution's attribute: these functions are an
       # origin of that distribution, so referencing it here would be a cycle.
       WEB_URL = local.has_domain ? "https://${var.web_domain}" : ""
+
+      # Browser origins the MCP endpoint accepts. Same cycle applies, which is why
+      # the CloudFront name arrives through a variable rather than an attribute.
+      ALLOWED_ORIGINS = join(",", concat(
+        local.has_domain ? ["https://${var.web_domain}"] : [],
+        var.extra_allowed_origins,
+      ))
     }
   }
 

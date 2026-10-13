@@ -92,13 +92,18 @@ locals {
   # clients calling the API directly, /api/mcp is the same server reached through
   # CloudFront by the web app, on the same origin as the page.
   routes = {
-    webhook   = { key = "POST /ring/webhook", handler = "webhook" }
-    token     = { key = "POST /ring/token", handler = "token" }
-    link      = { key = "GET /ring/link", handler = "link" }
-    home      = { key = "GET /", handler = "home" }
-    mcp       = { key = "POST /mcp", handler = "mcp" }
-    mcp_web   = { key = "POST /api/mcp", handler = "mcp" }
-    assistant = { key = "POST /api/assistant", handler = "assistant" }
+    webhook = { key = "POST /ring/webhook", handler = "webhook" }
+    token   = { key = "POST /ring/token", handler = "token" }
+    link    = { key = "GET /ring/link", handler = "link" }
+    home    = { key = "GET /", handler = "home" }
+    mcp     = { key = "POST /mcp", handler = "mcp" }
+    mcp_web = { key = "POST /api/mcp", handler = "mcp" }
+    # The spec says the MCP endpoint must answer GET (with SSE, or 405) and lets it
+    # answer DELETE with 405. Without these routes API Gateway returns its own 404,
+    # which a client cannot tell apart from "there is no MCP server here".
+    mcp_get    = { key = "GET /mcp", handler = "mcp" }
+    mcp_delete = { key = "DELETE /mcp", handler = "mcp" }
+    assistant  = { key = "POST /api/assistant", handler = "assistant" }
   }
 
   # Only handlers that are actually reached over HTTP get an integration and an
