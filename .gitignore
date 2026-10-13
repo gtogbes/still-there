@@ -20,3 +20,6 @@ crash.log
 
 # Generated from mcp-app/ by scripts/build-mcp-app.mjs
 src/mcp/app-html.generated.ts
+
+# Drafts kept locally, not published with the repo
+docs/blog/
