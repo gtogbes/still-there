@@ -24,6 +24,10 @@ what the live app shows after the nightly reset.
       must not appear in the video. Run it from outside the project folder, or npm
       echoes the full command, code included.
 - [ ] Have the README's *How it works* diagrams open in a second window for 2:10.
+- [ ] **MCP Apps shot**: run `AWS_PROFILE=gt node dist/tools/local-mcp.mjs --demo-minute 750`
+      and the ext-apps reference host (`examples/basic-host`, `npm start`), open
+      http://localhost:8080, choose `still_there_status`, *Call Tool*. Record ~5 seconds,
+      and click *Check again* once.
 - [ ] Do one full dry run. Read the narration aloud with a stopwatch.
 
 ## Script
@@ -87,14 +91,14 @@ conversation after that knows. Tell it she's back and it starts watching again."
 
 ### 2:10 – 2:35 · Under the hood
 
-**Screen:** terminal with MCP Inspector `tools/list` output, five tools visible.
-Then the architecture diagram.
+**Screen:** terminal with MCP Inspector `tools/list` output, five tools visible. Then
+the MCP Apps reference host showing the timeline view (see *MCP Apps shot* below).
 
 **VO:** "StillThere is a real MCP server on AWS, speaking the 2025-11-25 spec over
-Streamable HTTP. Here's the standard MCP Inspector listing its five tools from the live
-endpoint. The model only chooses the tool. The words come from the server, so it can't
-invent facts about anybody's mother. It checks the cameras were working before it
-calls anything missing. A flat battery is a maintenance job, not an alarm."
+Streamable HTTP. Here's the standard MCP Inspector listing its five tools. It also
+ships its own screen as an MCP App, here in the official reference host, which is how
+an Echo Show would draw it. The model only chooses the tool; the words come from the
+server, so it can't invent facts about anybody's mother."
 
 ### 2:35 – 2:50 · Honest close
 

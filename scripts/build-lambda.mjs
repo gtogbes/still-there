@@ -29,7 +29,7 @@ const HANDLERS = ['webhook', 'token', 'link', 'home', 'assess', 'mcp', 'assistan
  * stripping does not rewrite them to `.ts`. esbuild does, so the tools get bundled
  * the same way the handlers do rather than growing a parallel import convention.
  */
-const TOOLS = ['seed-household', 'demo-local', 'demo-live', 'seed-demo-alerts'];
+const TOOLS = ['seed-household', 'demo-local', 'demo-live', 'seed-demo-alerts', 'local-mcp'];
 
 await rm(join(root, 'dist'), { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });

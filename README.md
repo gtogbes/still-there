@@ -164,6 +164,47 @@ The latency figure took one change: the six weeks of history behind every status
 answer cannot change during the day, so a warm container keeps it for ten minutes
 instead of re-reading roughly two thousand rows per question.
 
+### It ships its own screen (MCP Apps)
+
+Every tool is linked to `ui://still-there/today.html`, an
+[MCP Apps](https://apps.extensions.modelcontextprotocol.io/) view, so a host that
+supports the extension draws the answer instead of only reading it out. Alexa+
+supports MCP Apps on Echo Show, so this is what a StillThere answer would look like
+there: today's habits on a timeline, the learned routine, or the message that was sent
+and why.
+
+![The StillThere MCP App rendered by the official MCP Apps reference host](docs/screenshots/06-mcp-app-in-reference-host.png)
+
+*Rendered by the official reference host from the
+[ext-apps repository](https://github.com/modelcontextprotocol/ext-apps) (v1.7.5), in
+its sandboxed iframe, against our server. "Check again" calls `still_there_status`
+back through the host. The view never talks to the server directly.*
+
+How it's built:
+
+- **One self-contained HTML file.** The sandbox has no network access, so script and
+  styles are inlined. The CSP declares no domains. `scripts/build-mcp-app.mjs` bundles
+  `mcp-app/` with esbuild into a module the Lambda imports, so there is nothing to
+  deploy alongside it.
+- **Rendering is a pure function** (`src/mcp/app-view.ts`): structuredContent in, HTML
+  out, every value escaped, unit tested in Node. A result the view doesn't recognise
+  falls back to the spoken text instead of going blank.
+- **Follows the host's light or dark theme**, through the official `App` client.
+- **263 KiB.** The first build was 520 KiB, about 300 KiB of it Zod's error messages in
+  fifty languages. The build drops that one re-export; validation is untouched.
+
+To see it yourself:
+
+```bash
+npm run build:lambda
+AWS_PROFILE=… node dist/tools/local-mcp.mjs --demo-minute 750   # 127.0.0.1 only, no auth
+# then, in ext-apps/examples/basic-host: npm install && npm start → http://localhost:8080
+```
+
+Our own simulated Echo Show draws its cards with React rather than hosting this view,
+because a strict page CSP and an MCP Apps sandbox need separate origins. Making the
+simulated device a full MCP Apps host is the obvious next step.
+
 ### `explain_last_alert` is the interesting one
 
 Because the message and the findings behind it are stored, the explanation is

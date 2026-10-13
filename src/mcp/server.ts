@@ -1,5 +1,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  RESOURCE_MIME_TYPE,
+  registerAppResource,
+  registerAppTool,
+} from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
+import { APP_HTML } from './app-html.generated.js';
 import { eventsBetween } from '../storage/events.js';
 import { getHousehold, putHousehold, type StoredHousehold } from '../storage/household.js';
 import { assessmentsBetween, lastNotificationBefore } from '../storage/assessments.js';
@@ -75,6 +81,20 @@ export function clearHistoryCache(): void {
   historyCache.clear();
 }
 
+/**
+ * The MCP App view: one self-contained HTML document, served as a `ui://` resource.
+ *
+ * Every tool points at it, so a host that supports MCP Apps — Alexa+ on an Echo Show
+ * among them — draws the answer instead of only reading it out. Hosts without the
+ * extension ignore `_meta` and use the text, which is why every tool still returns
+ * a complete spoken sentence.
+ *
+ * The view makes no network requests of its own, so its CSP declares no domains.
+ */
+export const VIEW_URI = 'ui://still-there/today.html';
+const VIEW = { ui: { resourceUri: VIEW_URI } };
+const VIEW_META = { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false } };
+
 const NO_HOUSEHOLD = {
   content: [{ type: 'text' as const, text: 'No household is set up yet, so there is nothing to check.' }],
 };
@@ -106,12 +126,28 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
     },
   );
 
+  registerAppResource(
+    server,
+    "StillThere: today's view",
+    VIEW_URI,
+    {
+      mimeType: RESOURCE_MIME_TYPE,
+      description: "Draws a StillThere answer: today's habits on a timeline, the learned routine, or why a message was sent.",
+      _meta: VIEW_META,
+    },
+    async () => ({
+      contents: [{ uri: VIEW_URI, mimeType: RESOURCE_MIME_TYPE, text: APP_HTML, _meta: VIEW_META }],
+    }),
+  );
+
   const load = async (): Promise<StoredHousehold | undefined> =>
     getHousehold(deps.tables, deps.householdId);
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'still_there_status',
     {
+      _meta: VIEW,
       title: 'Check on the household',
       description:
         'Whether the resident appears to be having a normal day, or whether a usual activity is overdue. Use for "is Mum up yet", "is everything alright", "any news".',
@@ -135,9 +171,11 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
     },
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'explain_last_alert',
     {
+      _meta: VIEW,
       title: 'Explain the last alert',
       description:
         'Why StillThere last got in touch: the exact message sent, which habits were missed, when they were expected, and how consistent they had been. Use for "why did you message me", "what was that about".',
@@ -159,9 +197,11 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
     },
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'describe_routine',
     {
+      _meta: VIEW,
       title: "Describe the resident's learned routine",
       description:
         'The daily pattern StillThere has learned, and how dependable each habit is. Use for "what does a normal day look like", "what do you actually watch for".',
@@ -182,9 +222,11 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
     },
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'pause_monitoring',
     {
+      _meta: VIEW,
       title: 'Pause monitoring while the resident is away',
       description:
         'Stop raising alerts for a number of days, for a holiday or a stay elsewhere. Activity is still recorded so the learned routine is not lost. Use for "Mum is away this week", "stop watching until Friday".',
@@ -222,9 +264,11 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
     },
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'resume_monitoring',
     {
+      _meta: VIEW,
       title: 'Resume monitoring',
       description:
         'End a pause early because the resident is home again. Use for "she is back", "start watching again".',

@@ -9,16 +9,17 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "vitest run",
+    "test": "npm run build:mcp-app --silent && vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run test",
+    "typecheck": "npm run build:mcp-app --silent && tsc --noEmit && tsc --noEmit -p mcp-app",
+    "check": "npm run typecheck && vitest run",
     "check:creds": "node scripts/check-credentials.mjs",
     "check:creds:live": "node scripts/check-credentials.mjs --live",
-    "build:lambda": "node scripts/build-lambda.mjs",
+    "build:lambda": "node scripts/build-mcp-app.mjs && node scripts/build-lambda.mjs",
     "seed": "node scripts/build-lambda.mjs && node dist/tools/seed-household.mjs",
     "demo": "node scripts/build-lambda.mjs > /dev/null && node dist/tools/demo-local.mjs",
-    "demo:live": "node scripts/build-lambda.mjs > /dev/null && node dist/tools/demo-live.mjs"
+    "demo:live": "node scripts/build-lambda.mjs > /dev/null && node dist/tools/demo-live.mjs",
+    "build:mcp-app": "node scripts/build-mcp-app.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
@@ -33,6 +34,7 @@
     "@aws-sdk/client-secrets-manager": "^3.1137.0",
     "@aws-sdk/client-sns": "^3.1137.0",
     "@aws-sdk/lib-dynamodb": "^3.1137.0",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "zod": "^4.6.5"
   }

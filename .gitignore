@@ -17,3 +17,6 @@ crash.log
 *.log
 .DS_Store
 .vitest/
+
+# Generated from mcp-app/ by scripts/build-mcp-app.mjs
+src/mcp/app-html.generated.ts
