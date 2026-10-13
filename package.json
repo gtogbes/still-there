@@ -2,7 +2,7 @@
   "name": "still-there",
   "version": "0.1.0",
   "private": true,
-  "description": "Absence-based caretaking for Ring devices. Learns a household's routine and alerts on the activity that did not happen.",
+  "description": "An MCP server for absence-based caretaking. Learns an older person's daily routine and tells family about the activity that did not happen.",
   "license": "MIT",
   "type": "module",
   "engines": {

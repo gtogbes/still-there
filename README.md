@@ -1,134 +1,317 @@
 # StillThere
 
-Absence-based caretaking for Ring devices. It learns a household's daily rhythm and
-alerts on the activity that **didn't** happen.
+**Ask Alexa+ how your mum's morning went — and get told when it didn't happen.**
 
-Built for the Ring track of the Build, Ship, Shape: Amazon Developer Hackathon.
+StillThere learns an older person's daily rhythm and notices the activity that
+**didn't** happen. Then it explains itself, out loud, when the family asks why.
+
+Built for the Alexa+ track of the Build, Ship, Shape: Amazon Developer Hackathon.
+
+| | |
+|---|---|
+| **Try it** | **https://d3l9lbhc7hpjm0.cloudfront.net** (access code in the Devpost testing instructions) |
+| **MCP endpoint** | `https://eop88u898f.execute-api.us-east-1.amazonaws.com/mcp` |
+| **Protocol** | MCP `2025-11-25`, Streamable HTTP, 5 tools |
+| **Source** | MIT. Everything here, including the infrastructure. |
+
+![StillThere answering "why did you message me?" on a simulated Alexa+ screen](docs/screenshots/04-why-did-you-message-me.png)
 
 ## The idea
 
-A Ring doorbell already records the shape of someone's day — door opened at 08:10,
-motion in the hallway, movement in the kitchen. Normally those events exist to tell
-you a stranger is outside. StillThere uses them backwards.
+A camera or a contact sensor already records the shape of someone's day — door opened
+at 08:10, movement in the hallway, someone in the kitchen by half past. Normally those
+events exist to tell you a stranger is outside. StillThere uses them backwards.
 
-It spends a couple of weeks learning that Jasmine, 82, is up before eight, out for the
-paper by ten past, and in the kitchen by half past. Then one Tuesday none of that
-happens, and her daughter gets a message at work: *no sign of activity yet today,
-usually by 08:21, it's now 11:30.* Not an alarm. A nudge, with its reasoning attached.
+It spends a couple of weeks learning that Jasmine, 82, is up before half seven, out for
+the paper by quarter to eight, and in the kitchen by just gone eight. Then one Tuesday
+none of that happens, and her daughter gets a message at work: *no sign of Jasmine
+being up yet today, usually by 07:30, and it's now 09:00.* Not an alarm. A nudge, with
+its reasoning attached.
 
-No live feed to watch, no footage reviewed by default, and no professionally installed
-sensor kit — it runs on Ring hardware people already own.
+Then she can just ask the Echo in her kitchen.
 
-## Honest positioning: this category exists
+> **"Alexa, why did you message me about Mum?"**
+>
+> "I messaged you at 12:30 because there was no sign of her being up. She's usually up
+> and about by 07:30, held on 30 of the last 30 comparable days. The hallway, front
+> door and kitchen were quiet too. I only raise something once it's later than this
+> household's own normal range, not on a fixed schedule."
 
-Worth stating plainly, because it shapes what is actually new here.
+That last sentence is the product. Monitoring systems normally cannot tell you why they
+contacted you, because the reasoning existed only as long as the alert took to send.
 
-- **Alarm.com Wellness** does essentially this today, commercially: machine learning
-  over activity data to learn routines and alert family to changes that suggest a
-  problem. It needs a professionally fitted sensor kit, a panel, a dealer and a
-  monitoring subscription.
-- **Amazon built and then withdrew it.** Alexa Care Hub (2020) became the Alexa
-  Together subscription, which was discontinued in May 2025 and replaced by Alexa
-  Emergency Assist — a *reactive* service where someone has to ask for help.
-- There is twenty years of academic work on activity-of-daily-living anomaly
-  detection behind both.
+## Why this belongs on Alexa+
 
-So the concept is not novel. Four things about this delivery are:
+Three reasons, and the third is the one that matters.
 
-1. **Zero new hardware.** Ring's installed base is tens of millions of devices
-   already mounted and powered. No installer, no contract, no panel.
-2. **It fills a gap Amazon left.** Passive routine monitoring is precisely what
-   Emergency Assist cannot do, because the whole point is the days nobody can ask.
-3. **It was impossible on Ring until recently.** The Ring developer APIs only reached
-   general availability in April 2026; every prior integration ran on unofficial
-   reverse-engineered libraries.
-4. **The alert explains itself.** Traditional systems cross a threshold and emit
-   "unusual activity detected", families stop trusting those, and then stop reading
-   them. Every finding here names the specific habit, the time it was expected, and
-   how consistent that habit has been.
+**Checking in is a question, not an app.** Nobody opens a dashboard to find out their
+mother is fine. They wonder aloud in the kitchen. The natural shape of this product is
+a question asked into the room — which is what Alexa+ is for, and which an app icon on
+a phone will never be.
+
+**The hard part is the explaining, and that is exactly what an assistant is good at.**
+A push notification gets about eleven words. A conversation can carry the reasoning:
+what was expected, when, how reliably it normally happens, and why today crossed a
+line. Families stop trusting alerts they cannot interrogate.
+
+**The person who needs reassuring is the one least able to go and get it.** A daughter
+at work, a son in another country. Asking is free. Opening an app, remembering a
+password and reading a chart is not, and so it does not happen daily — which is
+precisely the frequency at which this kind of monitoring is worth anything.
+
+## Try it
+
+The link above opens a simulated Alexa+ device. Everything it says comes from the live
+MCP server over the public internet; nothing on the page is scripted.
+
+1. **Enter the access code** from the Devpost testing instructions. It gates the API,
+   not just the page, and it fails closed.
+2. **Move the demo clock** (bottom right: 08:00 · 09:30 · 11:00 · 12:30). Watch the
+   screen change state and the daughter's phone fill up with the messages that were
+   actually sent today. These moved the time of day only — it is still really today.
+3. **Tap a suggested question**, or press the microphone and ask in your own words.
+   Bedrock picks the tool; the answer is the tool's own text.
+4. Try **"she's away next week"**, then **"she's back"** — those write to the live
+   household and change what the other answers say.
+
+**Use Chrome** if you want to talk to it. Speech recognition in the browser is
+Chrome-only. Typing works everywhere, and spoken replies can be switched off top right.
+
+### The three states, in order
+
+| 08:00 — nothing is wrong yet | 09:30 — the first nudge | 12:30 — worth a call |
+|---|---|---|
+| ![](docs/screenshots/01-0800-nothing-due.png) | ![](docs/screenshots/02-0930-overdue.png) | ![](docs/screenshots/03-1230-escalated.png) |
+
+At 08:00 Jasmine's usual 07:30 has already passed, and the screen says so — *a later
+start is still within her normal range*. Saying "nothing is overdue" there would be
+true and useless. Severity escalates low → medium → high as the morning goes on, and
+the phone stacks each message as it is sent.
+
+Asking **"what's her normal day like?"** shows the learned routine and how dependable
+each habit is, which is the honest answer to *what do you actually watch for*:
+
+![The learned routine, with reliability per habit](docs/screenshots/05-normal-day.png)
+
+## The MCP server
+
+StillThere is an MCP server first. The web app is one client; your assistant can be
+another.
+
+Five tools, written to be asked rather than read. Every result carries both a sentence
+(for speech) and `structuredContent` (for a screen), so one server serves a voice-only
+assistant and a display device without either compromising.
+
+| Tool | Asked as | Writes? |
+|---|---|---|
+| `still_there_status` | "is Mum up yet", "is everything alright", "any news" | no |
+| `explain_last_alert` | "why did you message me", "what was that about" | no |
+| `describe_routine` | "what does a normal day look like for her" | no |
+| `pause_monitoring` | "she's away this week" — asks how many days if unclear | yes |
+| `resume_monitoring` | "she's back", "start watching again" | yes |
+
+No tool returns raw events, device identifiers or images.
+
+### Connect your own client
+
+```json
+{
+  "mcpServers": {
+    "still-there": {
+      "url": "https://eop88u898f.execute-api.us-east-1.amazonaws.com/mcp",
+      "headers": { "Authorization": "Bearer <access code>" }
+    }
+  }
+}
+```
+
+Or by hand:
+
+```bash
+curl -s https://eop88u898f.execute-api.us-east-1.amazonaws.com/mcp \
+  -H "Authorization: Bearer $STILL_THERE_ACCESS_CODE" \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+The server advertises protocol `2025-11-25` and runs in a single Lambda — the SDK's
+`McpServer` behind a stateless Streamable HTTP transport, one request per invocation.
+
+### `explain_last_alert` is the interesting one
+
+Because the message and the findings behind it are stored, the explanation is
+**recalled, not reconstructed**. The reply quotes the exact words the family received,
+the habits that were missed, when each was expected, and how consistent each had been.
+A system that regenerated that explanation could drift from what it actually sent,
+which is the one thing an audit trail must not do.
 
 ## What is real and what is simulated
 
 Stated up front, because it is the first thing anyone evaluating this should know, and
 better said by us than discovered by a reviewer.
 
-**No Ring account has ever been linked to this app, and no physical Ring device was
-used.** Not a shortcut we took for convenience — Ring private apps connect real
-accounts, up to five, and [each connected account needs an active Ring Protect Plan or
-trial](https://developer.amazon.com/docs/ring/developer-faq.html) for device access.
-We had neither the hardware nor the subscription.
+**Real, running on AWS right now:**
+
+- The MCP server, on the public internet, speaking a current revision of the protocol.
+- Tool selection by Amazon Bedrock (Nova Lite) from the live `tools/list` output.
+- The learned baseline, the assessment, the notification policy and the stored audit
+  trail, over thousands of events in DynamoDB.
+- The alert wording, written by Bedrock and then checked before sending.
+- CloudFront, S3, API Gateway, seven Lambdas, KMS, Secrets Manager, EventBridge
+  Scheduler on a 15-minute cycle, SNS, three alarms. All in Terraform.
+
+**Simulated, deliberately and visibly:**
+
+- **The Alexa+ device.** It is a web page styled as an Echo Show, labelled as such on
+  screen. Alexa+ cannot yet be extended with a third-party MCP server by a developer
+  outside the programme, so the client is ours. The server behind it is not a mock,
+  which is the half that was worth building properly.
+- **The household's events.** Jasmine is a synthetic persona with 42 days of generated
+  history. See below.
+- **The clock, within today.** The demo clock moves the *time of day* and nothing else.
+  The events carry real timestamps and the date is really today; `assess` is asked
+  about a chosen moment rather than made to wait for one.
+
+### Why the events are synthetic
+
+**No Ring account has ever been linked to this app, and no physical device was used.**
+Not a shortcut taken for convenience — Ring private apps connect real accounts, and
+[each connected account needs an active Ring Protect Plan or trial](https://developer.amazon.com/docs/ring/developer-faq.html)
+for device access. We had neither the hardware nor the subscription, and the Playground,
+as far as we could determine, does not deliver events to a registered webhook URL, so
+it could not stand in as an event source.
 
 So the events are ours. `scripts/send-test-webhook.mjs` builds a payload in Ring's
 documented webhook v1.1 shape, signs it with the real HMAC key issued by the Ring
 Developer Portal, and posts it at the deployed endpoint over the public internet.
 
-What that genuinely exercises, on real infrastructure:
+What that genuinely exercises:
 
 | Exercised for real | How |
 |---|---|
 | HMAC-SHA256 signature verification | Valid signature accepted, tampered body rejected with 401 |
 | The v1.1 JSON:API envelope | Parsed from `data.type`, `data.attributes.source`, `data.attributes.timestamp` |
-| Ring's event vocabulary | `motion_detected`, `button_press`, `contact_sensor_faulted`, `device_offline`, `app_integration_removed` |
+| The event vocabulary | `motion_detected`, `button_press`, `contact_sensor_faulted`, `device_offline`, `app_integration_removed` |
 | Deduplication | Replayed `meta.request_id` returns `duplicate` |
 | Everything downstream | Storage, baseline learning, assessment, Bedrock narration, SNS delivery, erasure |
 | Client credentials | Verified against `oauth.ring.com`, which returns `invalid_grant` rather than `invalid_client` |
 
-**The one untested assumption is that Ring's actual bytes match its documented shape.**
-Everything downstream of the parser is proven; the parser itself is written from the
-specification rather than from a captured delivery. This is exactly why the adapter is
-strict rather than tolerant: an unrecognised payload returns `invalid` listing the keys
-it did contain, so the first real delivery reports precisely what differs instead of
-silently coercing something plausible. An earlier version guessed a flat payload shape
-and was wrong about nearly every field name, which is how that lesson was learned.
+**The one untested assumption is that the real bytes match the documented shape.**
+Everything downstream of the parser is proven; the parser is written from the
+specification rather than from a captured delivery. Which is why the adapter is strict
+rather than tolerant: an unrecognised payload returns `invalid` listing the keys it did
+contain, so the first real delivery reports precisely what differs instead of silently
+coercing something plausible. An earlier version guessed a flat payload shape and was
+wrong about nearly every field name, which is how that lesson was learned.
 
-Ring's Playground was useful for reading real API responses, but as far as we could
-determine it does not deliver events to a registered webhook URL, so it could not
-stand in as an event source.
+The event source is a seam, by design. `src/ring/adapter.ts` is the only file that
+knows Ring exists; everything below it reasons about `ActivityEvent`. A different
+sensor vendor is a new adapter, not a new product.
+
+## Honest positioning: this category exists
+
+Worth stating plainly, because it shapes what is actually new here.
+
+- **Alarm.com Wellness** does essentially this today, commercially: machine learning
+  over activity data to learn routines and alert family to changes. It needs a
+  professionally fitted sensor kit, a panel, a dealer and a monitoring subscription.
+- **Amazon built and then withdrew it.** Alexa Care Hub (2020) became the Alexa
+  Together subscription, discontinued in May 2025 and replaced by Alexa Emergency
+  Assist — a *reactive* service where someone has to ask for help.
+- There is twenty years of academic work on activity-of-daily-living anomaly detection
+  behind both.
+
+So the concept is not novel. Four things about this delivery are:
+
+1. **It fills the gap Amazon left, in the place Amazon left it.** Passive routine
+   monitoring is precisely what Emergency Assist cannot do, because the whole point is
+   the days nobody can ask. Putting it back on Alexa+ puts it where it was.
+2. **The alert explains itself, conversationally.** Traditional systems cross a
+   threshold and emit "unusual activity detected". Families stop trusting those, then
+   stop reading them. Every finding here names the habit, the time it was expected, and
+   how consistent it has been — and will answer follow-up questions about it.
+3. **The assistant cannot invent the facts.** The model routes and nothing else. See
+   below; this is the part most voice integrations get wrong.
+4. **Zero new hardware, in principle.** It runs on consumer devices people already own
+   rather than an installed kit, a contract and a panel.
 
 ## How it works
 
+Two halves. One watches and notices; the other answers questions about what it noticed.
+
+**The watching half** — runs whether anybody is asking or not:
+
 ```
-Ring webhook ──▶ verify HMAC ──▶ classify ──▶ dedupe ──▶ DynamoDB
-                                     │
-                                     ├─ activity      → event stream
-                                     ├─ device status → latest health per device
-                                     └─ revocation    → erase everything
+events ──▶ verify HMAC ──▶ classify ──▶ dedupe ──▶ DynamoDB
+                               │
+                               ├─ activity      → event stream
+                               ├─ device status → latest health per device
+                               └─ revocation    → erase everything
 
 every 15 min ──▶ learn baseline (42 days, excluding today)
-                        │
-                        ├─ assess(evaluatedAt) ──┬─ deviation     → Bedrock → validate → SNS
-                        │                        └─ unobservable  → maintenance, never family
-                        └─ device health
+                      │
+                      ├─ assess(evaluatedAt) ─┬─ deviation    → notify policy → Bedrock
+                      │                       │                 → validate → SNS → family
+                      │                       └─ unobservable → maintenance, never family
+                      └─ device health
 ```
 
-Four ideas carry most of the weight.
+**The asking half** — the MCP server, and two clients for it:
 
-**Time is an argument, never ambient.** No `Date.now()` anywhere in `src/domain`.
-Every function takes the instant it should reason about.
+```
+                      ┌─ /api/assistant ─▶ Bedrock picks a tool ─┐
+browser ─▶ CloudFront ─┤   (spoken or typed questions)            ├─▶ MCP ─▶ DynamoDB
+ (Echo Show UI)       └─ /api/mcp ──────────────────────────────┘    │
+                          (ambient view: no model, no cost)          │
+                                                                     │
+any MCP client ─▶ POST /mcp  (Authorization: Bearer) ────────────────┘
+```
+
+Same origin, so no CORS: `/api/*` is a CloudFront behaviour pointing at API Gateway,
+caching disabled. The page itself is S3 behind OAC with a strict CSP and bundled fonts
+(no third-party font CDN, so the CSP has no exceptions in it).
+
+### The model routes. It does not narrate the facts.
+
+`/api/assistant` passes the utterance and the live `tools/list` output to Nova Lite and
+asks it to pick a tool. The **spoken reply is the MCP tool's own deterministic text**,
+not the model's prose. So the assistant can misroute a question — and the worst case is
+a correct answer to the wrong question, never a confident invention about someone's
+mother.
+
+A keyword router sits behind it and takes over if Bedrock is unavailable, denied or
+slow. The feature degrades to a slightly stupider router. It does not go down.
+
+Routing costs one Nova Lite call per spoken question, and the ambient view costs none —
+the screen reads MCP directly, so moving the clock is free. That is a cost decision as
+much as a correctness one.
+
+### Six design decisions that carry the weight
+
+**Time is an argument, never ambient.** No `Date.now()` anywhere in `src/domain`. Every
+function takes the instant it should reason about.
 
 That one constraint pays for itself repeatedly. It is why the test suite replays ninety
-days in under a second, why the false-positive budget is measurable at all, and why both
-demos can walk through a morning without waiting for one. A system that reads the clock
+days in under a second, why the false-positive budget is measurable at all, and why the
+demo can walk through a morning without waiting for one. A system that reads the clock
 internally could not be demonstrated in three minutes, which for a project judged on a
 three-minute video would have been fatal.
 
-**Not all events are occupancy evidence.** A doorbell facing the street fires on
-passing cars and the postman. If exterior motion counted as occupancy the system would
-report a normal morning for a house nobody had got out of bed in — the most dangerous
-false negative available. Only interior movement, or a door physically opening, counts.
+**Not all events are occupancy evidence.** A doorbell facing the street fires on passing
+cars and the postman. If exterior motion counted as occupancy, the system would report a
+normal morning for a house nobody had got out of bed in — the most dangerous false
+negative available. Only interior movement, or a door physically opening, counts.
 
-**And not all interior movement is a person.** Ring classifies motion as `human`,
-`vehicle` or `other_motion`, and that distinction does real work here, because the cat
-walks through the hallway all day. By default only `human` and unclassified motion count
-as proof of life. The asymmetry is deliberate: mistaking a pet for the resident means
-silence on a day something was wrong, while discounting the resident means one
-unnecessary phone call. Only one of those hurts anybody, so the conservative reading
-wins even though it costs us false positives.
+**And not all interior movement is a person.** Motion is classified `human`, `vehicle`
+or `other_motion`, and that distinction does real work, because the cat walks through
+the hallway all day. By default only `human` and unclassified motion count as proof of
+life. The asymmetry is deliberate: mistaking a pet for the resident means silence on a
+day something was wrong, while discounting the resident means one unnecessary phone
+call. Only one of those hurts anybody.
 
 A pleasant consequence, found while writing the test for it: a cat cannot open a front
 door, so the contact-sensor anchor survives even if motion classification fails
-completely. Households with a contact sensor get defence in depth for free, which is
-useful when advising someone which device to add first.
+completely. Households with a contact sensor get defence in depth for free.
 
 **A flat battery and an unconscious person produce identical data: silence.** Every
 missing-activity finding is checked against device health first. If the camera was
@@ -137,16 +320,22 @@ maintenance — never to the family as a welfare alert. This is the single corre
 question in the product.
 
 **Deadlines come from the late edge of what this household actually does.** The 95th
-percentile of observed times, plus a grace period, rather than a median and a spread
-multiplier. Most mornings cluster tightly and then straggle, so a symmetric model
-gives a regular household a hair-trigger and an irregular one a deadline that never
-arrives.
+percentile of observed times plus a grace period, rather than a median and a spread
+multiplier. Most mornings cluster tightly and then straggle, so a symmetric model gives
+a regular household a hair-trigger and an irregular one a deadline that never arrives.
 
-**Withdrawing consent erases everything.** When Ring reports that someone removed the
-integration, the tokens, activity history, learned routine, room assignments and record
-of past notifications are all deleted. Not marked for expiry — deleted. Letting the
-90-day TTL handle it would be defensible and would also mean keeping months of
-somebody's movements after they asked us to stop. Expiry is not erasure.
+**One message, then only on escalation.** The assessment runs every 15 minutes, and an
+early version sent a message — and made a Bedrock call — on every single run of a bad
+morning. The family would have had sixteen texts by lunchtime. `src/notify/policy.ts`
+now sends once the first time something is wrong today, then only when severity
+actually escalates: at most three messages a day, which is exactly what the phone in
+the screenshot shows.
+
+**Withdrawing consent erases everything.** When the integration is removed, the tokens,
+activity history, learned routine, room assignments and record of past notifications
+are all deleted. Not marked for expiry — deleted. Letting the 90-day TTL handle it
+would be defensible and would also mean keeping months of somebody's movements after
+they asked us to stop. Expiry is not erasure.
 
 ## The false-positive budget
 
@@ -161,17 +350,16 @@ times a day, and counts how often the family gets bothered for no reason.
 
 Nosa's budget is deliberately non-zero, and he is the honest half of the test. His
 habits are loose enough that some days genuinely look like nothing happened. The two
-cheap ways to make his number zero are to invent structure he does not have, or to
-widen tolerances until nothing is ever noticed — so there is a test asserting he still
-has anchors, to prove the budget is met by judgement rather than by giving up.
+cheap ways to make his number zero are to invent structure he does not have, or to widen
+tolerances until nothing is ever noticed — so there is a test asserting he still has
+anchors, to prove the budget is met by judgement rather than by giving up.
 
-The reliability threshold is what does the work. An anchor absent on 12% of normal
-days will fire on 12% of normal days, which is about three nudges a month for a habit
-the resident simply does not always keep. At 0.95 a habit must hold on more than
-nineteen days in twenty before we are willing to wake anybody over its absence. For
-Nosa that means all his mealtime anchors are correctly discarded: the system can tell
-you reliably whether he reached his lounge, and admits it knows nothing dependable
-about when he eats.
+The reliability threshold does the work. An anchor absent on 12% of normal days will
+fire on 12% of normal days, which is about three nudges a month for a habit the resident
+simply does not always keep. At 0.95 a habit must hold on more than nineteen days in
+twenty before we are willing to wake anybody over its absence. For Nosa that means all
+his mealtime anchors are correctly discarded: the system can tell you reliably whether
+he reached his lounge, and admits it knows nothing dependable about when he eats.
 
 ## What an alert is allowed to say
 
@@ -179,10 +367,10 @@ Findings are generated deterministically. Bedrock then rewrites them into someth
 readable, and **its output is a proposal, not a decision.**
 
 That distinction is the whole design. A language model cannot be tested into never
-saying "she may have fallen" — prompting lowers the odds and guarantees nothing. So
-the model's text is checked against the same rules the deterministic text already
-satisfies, and discarded in favour of that text when it fails. The safety properties
-therefore hold regardless of the model, the prompt, or a bad day.
+saying "she may have fallen" — prompting lowers the odds and guarantees nothing. So the
+model's text is checked against the same rules the deterministic text already satisfies,
+and discarded in favour of that text when it fails. The safety properties therefore
+hold regardless of the model, the prompt, or a bad day.
 
 `tests/safety.test.ts` and `tests/narration.test.ts` pin the invariants. Rejected:
 
@@ -202,73 +390,82 @@ The model never decides *whether* to alert, and never sees an image.
 
 Four verified findings become:
 
-> No sign of Jasmine being up yet today — usually by 08:28, and it's now 12:26. The
-> hallway, front door, and kitchen are also quiet.
+> Jasmine was expected to be up by 07:30, but there's been no sign of her yet and it's
+> now 12:30. The hallway, front door, and kitchen activities are also overdue.
 
 And when Bedrock is unavailable, denied, or says something unacceptable, this goes
 instead — verified by pointing the deployment at a nonexistent model:
 
-> No first sign of activity yet today. Usually by 07:31 (allowing until 08:28), seen on
+> No first sign of activity yet today. Usually by 07:37 (allowing until 08:28), seen on
 > 30 of the last 30 working days. It is now 12:26, 238 minutes past. 3 other usual
 > activities are also outstanding.
 
 Narration degrades. It does not fail, and it never blocks a notification.
 
+The prompt is also deliberately starved: it gets the usual time and a *spoken* lateness
+("about four hours later than usual"), never the deadline or the raw minute counts.
+Given those numbers the model quoted them back, and "238 minutes past" is not how anyone
+tells you your mother did not get up.
+
 ## Running it
 
-Requires Node 20+.
+Requires Node 20+. Nothing below needs an AWS account or any credentials.
 
 ```bash
 npm install
-npm run demo      # watch the whole thing work, offline, in about a second
-npm test          # 124 tests
-npm run check     # typecheck + tests
+npm run demo      # the whole thing, offline, in about a second
+npm run check     # typecheck + 214 tests
 ```
 
-**Start with `npm run demo`.** It needs no AWS account, no Ring account and no
-credentials. It learns Jasmine's routine from 42 days of history, shows an ordinary day
-producing silence, then walks a bad day from 08:00 (nothing overdue yet) through to
-12:26, and finishes on the two things that were easy to get wrong — the cat, and a
-camera that had stopped watching.
+**Start with `npm run demo`.** It learns Jasmine's routine from 42 days of history,
+shows an ordinary day producing silence, then walks a bad day from 08:00 (nothing
+overdue yet) through to lunchtime, and finishes on the two things that were easy to get
+wrong — the cat, and a camera that had stopped watching.
 
 The test suite is the same: synthetic households and fixed HMAC keys, offline, under a
 second, no network.
 
-### Talking to Ring
-
-Copy `.env.example` to `.env` and fill in the three credentials issued when you
-register the app in the Ring Developer Portal. `.env` is gitignored.
-
-The Client Secret and HMAC Signature Key are shown exactly once and cannot be
-retrieved afterwards. If you lose them the only remedy before certification is deleting
-the app and creating a new one.
-
 ```bash
-npm run check:creds        # validates .env shape without printing any of it
-npm run check:creds:live   # asks Ring whether the credentials are real
+cd web && npm install && npm run dev    # the Alexa+ UI, against the deployed API
 ```
 
-The live check works by presenting a deliberately invalid authorisation code. Ring
-distinguishes `invalid_client` from `invalid_grant`, so **`invalid_grant` is the pass
-condition** — the client authenticated and only the fake code was rejected.
+### Deploying your own
 
-### Deploying and demonstrating
+See [terraform/README.md](terraform/README.md) for the full sequence. In short:
 
-See [terraform/README.md](terraform/README.md) for the deploy sequence. Then:
+```bash
+npm run build:lambda
+cd terraform && terraform init && terraform apply
+terraform output -raw access_code         # generated, stored in Secrets Manager
+cd .. && AWS_PROFILE=… scripts/deploy-web.sh
+```
+
+Then give it a household to talk about, and check the result end to end:
 
 ```bash
 AWS_PROFILE=… node dist/tools/seed-household.mjs --history 42 --break-today
-npm run demo:live -- --api https://<id>.execute-api.us-east-1.amazonaws.com
+AWS_PROFILE=… node dist/tools/seed-demo-alerts.mjs   # the three stored messages
+node scripts/smoke-web.mjs https://<distribution>.cloudfront.net
 ```
 
-`demo:live` drives the deployed stack: a signed webhook crosses the internet, a
-tampered one is refused, the assessment is asked about three times of day, Bedrock
-phrases the result, and finally the integration is removed and every stored row is
-erased.
+`smoke-web.mjs` checks the page and its security headers, that both API paths refuse
+requests without the code, the ambient MCP read, and six real utterances routing through
+Bedrock to the right tool — then resumes monitoring so the demo household is left as it
+was found.
 
-Both demos compress time by *asking the assessment about a chosen moment* rather than
-waiting for it. Nothing is faked — events carry real timestamps, and this is possible
-only because no code in `src/domain` reads the clock.
+`scripts/screenshot.mjs` drives headless Chrome over CDP to produce the images in this
+README, which is how the layout problems in them got found.
+
+### Access control
+
+One generated access code (`random_password` → Secrets Manager), accepted as
+`x-still-there-access` from the browser or `Authorization: Bearer` from an MCP client.
+Constant-time compare, fails closed, enforced on `/api/assistant`, `/api/mcp` and
+`/mcp`. CloudFront attaches nothing — the browser sends it, so a leaked page is not a
+leaked API.
+
+This is a demo gate, not an identity system. A real deployment needs per-user auth; see
+*Not built yet*.
 
 ## Layout
 
@@ -282,44 +479,54 @@ src/domain/       pure reasoning: no I/O, no SDKs, no ambient time
   baseline.ts     learning the routine
   health.ts       could we actually have seen it?
   deviation.ts    the assessment
-src/ring/         the seam with Ring. Nothing below this knows Ring exists.
-  adapter.ts      Ring payloads -> ActivityEvent / DeviceHealthSample
-  classify.ts     what kind of message is this? pure, and separately tested
-  devices.ts      device-to-zone mapping, the one thing Ring cannot tell us
+src/mcp/          the MCP server
+  server.ts       five tools, text + structuredContent
+  tools.ts        the answers, phrased for speech. Pure, and heavily tested.
+  demo-clock.ts   the x-still-there-demo-minute header, gated by env
+src/assistant/    the /api/assistant endpoint's brain
+  bedrock-router.ts  tool choice via Nova Lite tool use
+  router.ts          keyword fallback. Never not available.
+  mcp-client.ts      the SDK client over Streamable HTTP
+src/ring/         the seam with the event source. Nothing below knows Ring exists.
+  adapter.ts      payloads -> ActivityEvent / DeviceHealthSample
+  classify.ts     what kind of message is this? pure, separately tested
+  devices.ts      device-to-zone mapping, the one thing the vendor cannot tell us
   webhook.ts      HMAC-SHA256 signature and nonce verification
-src/narration/    the Bedrock layer
+src/narration/    the Bedrock layer for alerts
   prompt.ts       facts and a writing job, never a judgement
   validate.ts     the gate: what a model is allowed to have written
   narrate.ts      calls Bedrock, validates, falls back. Never throws.
-src/notify/       SNS delivery
+src/notify/
+  policy.ts       once, then only on escalation
+  publish.ts      SNS delivery
 src/storage/      DynamoDB access
   events.ts       activity history, paginated
   state.ts        tokens, device map, health, dedup
-  household.ts    per-household configuration
+  household.ts    per-household configuration and pause windows
   assessments.ts  the audit trail for why a family was contacted
   erase.ts        honouring a withdrawal of consent
-src/handlers/     Lambda entry points
-  webhook.ts      verify, classify, record, acknowledge inside 5s
-  token.ts        Ring's authorisation code -> tokens (form-encoded, not JSON)
-  link.ts         account link landing, nonce freshness
+src/handlers/     seven Lambda entry points
+  mcp.ts          the MCP server, stateless, one request per invocation
+  assistant.ts    utterance -> Bedrock -> MCP -> speech + card + trace
+  access.ts       the access code check
   assess.ts       the scheduled assessment
-  home.ts         public landing page. No data access at all.
+  webhook.ts      verify, classify, record, acknowledge inside 5s
+  token.ts / link.ts / home.ts
 src/testing/      synthetic household harness
   personas.ts     Jasmine (regular) and Nosa (irregular, with a cat)
   generator.ts    event streams, device health snapshots
   rng.ts          seeded PRNG, so measurements are comparable across runs
-scripts/          operator tools
-  demo-local.mjs      offline demonstration
-  demo-live.mjs       drives the deployed stack
-  seed-household.mjs  synthetic history into DynamoDB
-  check-credentials.mjs / push-secret.mjs / audit-exposure.mjs
-terraform/        the deployment
-tests/
+web/              the simulated Alexa+ device (React, Tailwind, Vite)
+  components/     EchoShow, Phone, Timeline, Cards, DemoClock, AccessGate
+  hooks/useAmbient.ts   reads MCP directly, no model, no cost
+scripts/          operator tools: deploy, seed, smoke, screenshot, demos
+terraform/        the deployment, including CloudFront and S3
+tests/            214 tests
 ```
 
-### Zone is our concept, not Ring's
+### Zone is our concept, not the vendor's
 
-Ring knows a device with a given ID saw motion. It has no idea that device is in a
+A device with a given ID saw motion. The vendor has no idea that device is in a
 hallway, and no idea a hallway is indoors. That mapping is supplied by whoever sets the
 household up, and the interior/exterior distinction the entire occupancy model rests on
 derives from it.
@@ -330,102 +537,71 @@ system that has stopped working. Unmapped devices are surfaced rather than guess
 and an event from a device with no zone is declined instead of being placed somewhere
 plausible.
 
-## Known unknowns
-
-Recorded honestly, because these decide whether the design survives contact with the
-real API.
-
-**Resolved: `door_open` is real, but it belongs to sensors.** The scope picker in the
-Ring Developer Portal settles it — Cameras and Doorbells covers motion, doorbell
-presses, livestream and video download, while Contact Sensors covers door and window
-open/close. So the occupancy model was not wrong, it was assuming hardware we had not
-accounted for. Both scopes are requested. In production a household needs a contact
-sensor for the strongest signal; without one the model falls back to interior motion,
-which still works.
-
-**Resolved: device online/offline comes free.** Every approved app automatically
-receives Account and Lifecycle events, including device status changes. The blind-spot
-detection that the whole design leans on now has a real feed behind it rather than a
-hopeful interface.
-
-**A doorbell alone is not enough.** Under our own model, a doorbell facing the street
-produces exterior motion, which is explicitly *not* occupancy evidence. Absence
-detection needs at least one interior zone, so the cheap plug-in Indoor Camera is the
-load-bearing device here and the doorbell is the optional extra. Worth stating plainly
-rather than letting the "runs on hardware you already own" line do more work than it
-has earned.
-
-**Resolved, unfavourably: a subscription is required.** An earlier draft of this file
-guessed that consuming event metadata rather than video might avoid needing a Ring
-plan. It does not. Ring's FAQ states that each account connected to a private app needs
-an active Ring Protect Plan or trial for device access. Worth recording because the
-guess was wrong and the correction matters: there is no free path to real Ring data.
-
-**Resolved: there is no synthetic-device sandbox we can point this at.** Another wrong
-guess, based on a single line in the Getting Started FAQ. Private apps go Configure →
-Build → **Connect**, and Connect means authorising a real Ring account. The Playground
-is a browser tool for trying API calls, not an event source for a registered webhook.
-This is why the events in this project are ours — see *What is real and what is
-simulated* above.
-
-**Resolved: the payload is a JSON:API envelope.** Field paths now follow Ring's webhook
-v1.1 specification — `data.type`, `data.attributes.source`,
-`data.attributes.timestamp`, with `meta.request_id` as the deduplication key. An earlier
-version of the adapter guessed a flat shape and was wrong about nearly every name,
-which is a reasonable argument for reading the specification first. Two vocabularies
-exist and are handled separately: webhooks say `motion_detected` and `button_press`,
-the Event History API says `motion` and `ding`.
-
-Still outstanding: these are documented shapes, not captured ones. Replacing the
-fixtures with live sandbox deliveries remains the first job. The adapter stays strict
-rather than tolerant for exactly that reason — an unrecognised payload reports the keys
-it actually contained, so one failed delivery tells us what moved.
-
-**Link the Ring account as early as possible.** The Event History API is time-gated to
-the consent date and cannot reach back before it. Ring accumulates history from linking
-onward, which means our pipeline does not have to be up continuously to build a
-baseline — but every day of delay is a day of history that can never be recovered.
-Sensors are the exception: no history endpoint covers them at all, so contact-sensor
-events must be persisted on receipt or lost.
-
-**No video access without motion access.** The Cameras and Doorbells scope bundles
-livestream and video download with motion events; they cannot be requested separately.
-So the application holds video capability it deliberately does not exercise. Worth
-stating plainly rather than letting the privacy claim imply we could not look if we
-wanted to. Scopes we genuinely do not need — flood, temperature, air quality, chimes —
-are all switched off.
-
 ## Deployed and working
 
-Running in `us-east-1`: an HTTP API with four routes, five arm64 Lambdas with a role
-each, two DynamoDB tables, a customer-managed KMS key, Secrets Manager, EventBridge
-Scheduler on a 15-minute cycle, and four alarms. Around £1.50/month, nearly all of it
-the KMS key.
+Running in `us-east-1`: 108 Terraform-managed resources. An HTTP API with seven routes,
+seven arm64 Lambdas with a role each, two DynamoDB tables, a customer-managed KMS key,
+Secrets Manager, EventBridge Scheduler on a 15-minute cycle, SNS, three alarms, and an
+S3 + CloudFront front end with OAC. Around £2/month, nearly all of it the KMS key.
 
-Verified against the live stack: signature verification and rejection, the full event
-vocabulary, deduplication, baseline learning over 2,000 stored events, assessment at
-chosen times, Bedrock narration with fallback, SNS delivery, and erasure of 2,041 rows
-on withdrawal of consent.
+Verified against the live stack: the access gate on both paths, CSP headers, the ambient
+MCP read, six utterances routed by Bedrock to the correct tool at roughly a second each,
+protocol `2025-11-25`, signature verification and rejection, the full event vocabulary,
+deduplication, baseline learning over 2,000 stored events, assessment at chosen times,
+Bedrock narration with fallback, SNS delivery, and erasure of 2,041 rows on withdrawal
+of consent.
 
 ## Not built yet
 
+Honest list. None of it is hidden behind a button that does nothing.
+
+- **Real per-user authentication.** One shared access code is a demo gate. A real
+  deployment needs accounts, and account linking is the natural place for it.
+- **Native Alexa+ integration.** The client here is ours because a third-party MCP
+  server cannot yet be registered with Alexa+ from outside the programme. The server is
+  ready for it.
 - **Token refresh.** Access tokens last ~4 hours and refresh tokens ~30 days. An
   expired refresh token cannot be recovered — the user must re-link, which resets the
-  consent date and therefore discards the accumulated baseline. This needs a scheduled
-  job before any real account is connected.
+  consent date and therefore discards the accumulated baseline. Needs a scheduled job
+  before any real account is connected.
 - **Completing the account link.** `token.ts` stores tokens unclaimed and `link.ts`
-  records a pending nonce; nothing yet joins the two. That needs a sign-in step.
-- **A sign-in surface.** The landing page currently says so plainly rather than
-  offering a link that goes nowhere.
+  records a pending nonce; nothing yet joins the two.
 - **Device discovery.** Zone mapping is seeded by script. A real setup flow would list
-  an account's devices and let someone say which room each is in.
-- **Event History backfill**, to pull activity Ring already recorded since consent.
+  an account's devices and ask which room each is in.
+- **Event History backfill**, to pull activity already recorded since consent.
 - **Escalation to imagery** — fetching one frame when a high-severity finding trips,
   logged and visible to the resident. The boundary is designed; the call is not wired.
-- **Away mode.** Suppression windows exist in the data model with no way to set them.
 - **Real payload captures** to replace the documented-shape fixtures in
   `tests/adapter.test.ts`.
+- **Remote Terraform state.** The `backend "s3"` block is commented out so a first
+  apply works from a clean checkout. Local state is fine for one operator and a
+  liability the moment it is not. The generated access code lives in that state file,
+  which is gitignored.
 - `checkov` / `tfsec` have not been run against the Terraform.
+
+### Things we got wrong on the way
+
+Recorded because the corrections matter more than the guesses.
+
+- **A subscription is required.** An earlier draft guessed that consuming event
+  metadata rather than video might avoid needing a Ring plan. It does not. There is no
+  free path to real Ring data.
+- **There is no synthetic-device sandbox.** Private apps go Configure → Build →
+  **Connect**, and Connect means authorising a real account. The Playground is a browser
+  tool for trying API calls, not an event source for a registered webhook.
+- **The payload is a JSON:API envelope**, not the flat shape the first adapter assumed —
+  which was wrong about nearly every field name. Also: two vocabularies exist and are
+  handled separately. Webhooks say `motion_detected` and `button_press`; the Event
+  History API says `motion` and `ding`.
+- **`contact_sensor_faulted` means the door is open**, not that the sensor is broken.
+  Worth an hour of confusion.
+- **Claude was not available** on this account without an Anthropic use-case form, which
+  surfaces as `ResourceNotFoundException` rather than anything about access. Nova Lite
+  does the routing job well and costs less.
+- **Link the account as early as possible.** The Event History API is time-gated to the
+  consent date and cannot reach back before it. Every day of delay is a day of history
+  that can never be recovered. Sensors are worse: no history endpoint covers them at
+  all, so contact-sensor events must be persisted on receipt or lost.
 
 ## Licence
 
@@ -433,5 +609,5 @@ MIT. See [LICENSE](LICENSE).
 
 ---
 
-Descriptions of third-party products above were rephrased from vendor and press
-sources for compliance with licensing restrictions.
+Descriptions of third-party products above were rephrased from vendor and press sources
+for compliance with licensing restrictions.

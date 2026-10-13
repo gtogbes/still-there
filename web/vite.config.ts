@@ -20,6 +20,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: () => '/mcp',
       },
+      // The assistant route exists on the API under the same path, so it is passed
+      // through unchanged. Without this, typed and spoken questions 404 in dev.
+      '/api/assistant': {
+        target: process.env['STILL_THERE_API'] ?? 'https://eop88u898f.execute-api.us-east-1.amazonaws.com',
+        changeOrigin: true,
+      },
     },
   },
 });
