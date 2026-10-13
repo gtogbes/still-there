@@ -5,6 +5,7 @@ import { getHousehold, putHousehold, type StoredHousehold } from '../storage/hou
 import { assessmentsBetween, lastNotificationBefore } from '../storage/assessments.js';
 import { deviceHealthFor } from '../storage/state.js';
 import type { TableNames } from '../storage/tables.js';
+import type { ActivityEvent } from '../domain/types.js';
 import {
   baselineWindow,
   buildSuppression,
@@ -42,6 +43,36 @@ export interface ServerDeps {
    * me 09:30" — and that can only become an instant once we know where the house is.
    */
   readonly now: (timeZone: string) => number;
+}
+
+/**
+ * The learning window, cached per warm container.
+ *
+ * Six weeks of history ending at midnight cannot change during the day, yet every
+ * status question used to re-read all of it — most of the server's time per call,
+ * against a 500 ms round-trip budget for Alexa+. Keyed by the window itself, so a
+ * new day is a new key, and held for ten minutes so a late-arriving event for an
+ * earlier day is picked up soon after.
+ */
+const HISTORY_TTL_MS = 10 * 60_000;
+const historyCache = new Map<string, { readonly at: number; readonly events: Promise<ActivityEvent[]> }>();
+
+function cachedHistory(tables: TableNames, householdId: string, from: number, until: number): Promise<ActivityEvent[]> {
+  const key = `${tables.events}|${householdId}|${from}|${until}`;
+  const hit = historyCache.get(key);
+  if (hit !== undefined && Date.now() - hit.at < HISTORY_TTL_MS) return hit.events;
+
+  const events = eventsBetween(tables, householdId, from, until);
+  // A failed read must not be cached, or one throttled query poisons ten minutes.
+  events.catch(() => historyCache.delete(key));
+  historyCache.clear(); // Only the current window is ever worth keeping.
+  historyCache.set(key, { at: Date.now(), events });
+  return events;
+}
+
+/** Test seam. */
+export function clearHistoryCache(): void {
+  historyCache.clear();
 }
 
 const NO_HOUSEHOLD = {
@@ -93,7 +124,7 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
       const evaluatedAt = deps.now(household.timeZone);
       const window = baselineWindow(evaluatedAt, household.timeZone);
       const [historyEvents, todaysEvents, health] = await Promise.all([
-        eventsBetween(deps.tables, deps.householdId, window.learnFrom, window.dayStart),
+        cachedHistory(deps.tables, deps.householdId, window.learnFrom, window.dayStart),
         eventsBetween(deps.tables, deps.householdId, window.dayStart, window.dayEnd),
         deviceHealthFor(deps.tables, deps.householdId),
       ]);
@@ -141,7 +172,7 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
       if (household === undefined) return NO_HOUSEHOLD;
 
       const window = baselineWindow(deps.now(household.timeZone), household.timeZone);
-      const historyEvents = await eventsBetween(
+      const historyEvents = await cachedHistory(
         deps.tables,
         deps.householdId,
         window.learnFrom,

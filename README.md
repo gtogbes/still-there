@@ -137,6 +137,33 @@ curl -s https://eop88u898f.execute-api.us-east-1.amazonaws.com/mcp \
 The server advertises protocol `2025-11-25` and runs in a single Lambda — the SDK's
 `McpServer` behind a stateless Streamable HTTP transport, one request per invocation.
 
+### Checked against the Alexa+ MCP requirements
+
+Alexa+'s own MCP Toolkit and simulator are partner-only for now, and the hackathon
+FAQ confirms entrants cannot get access. So we did the step Amazon recommends before
+the simulator — validating the server in isolation with the standard
+[MCP Inspector](https://github.com/modelcontextprotocol/inspector) — and checked it
+against the published requirements one by one:
+
+| Alexa+ requirement | StillThere |
+|---|---|
+| MCP `2025-11-25` | ✅ negotiated by the SDK |
+| Streamable HTTP, not legacy SSE | ✅ JSON responses over Streamable HTTP |
+| Reachable at a remote HTTPS URL | ✅ API Gateway, TLS 1.2+ |
+| `401` for unauthenticated requests, **without** `WWW-Authenticate` | ✅ bare 401; the body says how to authenticate |
+| Bearer token in the `Authorization` header, never the query string | ✅ |
+| Round trip under 500 ms | ✅ warm: 20–85 ms in the function, ~0.33 s end to end from the UK, half of it TLS setup. ⚠️ A cold start is ~1.4 s. |
+| OAuth 2.1 + PKCE account linking, PRM document | ❌ a shared access code instead. See *Not built yet*. |
+
+```bash
+npx @modelcontextprotocol/inspector@2.10.1 --cli https://eop88u898f.execute-api.us-east-1.amazonaws.com/mcp \
+  --transport http --header "Authorization: Bearer $STILL_THERE_ACCESS_CODE" --method tools/list
+```
+
+The latency figure took one change: the six weeks of history behind every status
+answer cannot change during the day, so a warm container keeps it for ten minutes
+instead of re-reading roughly two thousand rows per question.
+
 ### `explain_last_alert` is the interesting one
 
 Because the message and the findings behind it are stored, the explanation is
@@ -157,8 +184,9 @@ better said by us than discovered by a reviewer.
 - The learned baseline, the assessment, the notification policy and the stored audit
   trail, over thousands of events in DynamoDB.
 - The alert wording, written by Bedrock and then checked before sending.
-- CloudFront, S3, API Gateway, seven Lambdas, KMS, Secrets Manager, EventBridge
-  Scheduler on a 15-minute cycle, SNS, three alarms. All in Terraform.
+- CloudFront, S3, API Gateway, eight Lambdas, KMS, Secrets Manager, EventBridge
+  Scheduler (every 15 minutes, plus a nightly demo reset), SNS, four alarms. All in
+  Terraform.
 
 **Simulated, deliberately and visibly:**
 
@@ -167,7 +195,12 @@ better said by us than discovered by a reviewer.
   outside the programme, so the client is ours. The server behind it is not a mock,
   which is the half that was worth building properly.
 - **The household's events.** Jasmine is a synthetic persona with 42 days of generated
-  history. See below.
+  history. See below. Every night at 00:05 London time a scheduled job
+  (`src/handlers/demo-reset.ts`) rebuilds her six weeks and today's missing morning,
+  then runs the *deployed* assessment at 09:00, 10:45 and 12:30, so the three messages
+  are produced the real way — Bedrock, validation, SNS — and the demo tells the same
+  story whichever day it is opened. It refuses to run unless the deployment is marked
+  as a demo.
 - **The clock, within today.** The demo clock moves the *time of day* and nothing else.
   The events carry real timestamps and the date is really today; `assess` is asked
   about a chosen moment rather than made to wait for one.
@@ -414,7 +447,7 @@ Requires Node 20+. Nothing below needs an AWS account or any credentials.
 ```bash
 npm install
 npm run demo      # the whole thing, offline, in about a second
-npm run check     # typecheck + 214 tests
+npm run check     # typecheck + 228 tests
 ```
 
 **Start with `npm run demo`.** It learns Jasmine's routine from 42 days of history,
@@ -505,13 +538,15 @@ src/storage/      DynamoDB access
   household.ts    per-household configuration and pause windows
   assessments.ts  the audit trail for why a family was contacted
   erase.ts        honouring a withdrawal of consent
-src/handlers/     seven Lambda entry points
+src/handlers/     eight Lambda entry points
   mcp.ts          the MCP server, stateless, one request per invocation
   assistant.ts    utterance -> Bedrock -> MCP -> speech + card + trace
   access.ts       the access code check
   assess.ts       the scheduled assessment
+  demo-reset.ts   rebuilds the simulated household nightly. Demo deployments only.
   webhook.ts      verify, classify, record, acknowledge inside 5s
   token.ts / link.ts / home.ts
+src/demo/         simulated-day.ts: the simulated household's day, decided at midnight
 src/testing/      synthetic household harness
   personas.ts     Jasmine (regular) and Nosa (irregular, with a cat)
   generator.ts    event streams, device health snapshots
@@ -521,7 +556,7 @@ web/              the simulated Alexa+ device (React, Tailwind, Vite)
   hooks/useAmbient.ts   reads MCP directly, no model, no cost
 scripts/          operator tools: deploy, seed, smoke, screenshot, demos
 terraform/        the deployment, including CloudFront and S3
-tests/            214 tests
+tests/            228 tests
 ```
 
 ### Zone is our concept, not the vendor's
@@ -539,9 +574,10 @@ plausible.
 
 ## Deployed and working
 
-Running in `us-east-1`: 108 Terraform-managed resources. An HTTP API with seven routes,
-seven arm64 Lambdas with a role each, two DynamoDB tables, a customer-managed KMS key,
-Secrets Manager, EventBridge Scheduler on a 15-minute cycle, SNS, three alarms, and an
+Running in `us-east-1`: 118 Terraform-managed resources. An HTTP API with seven routes,
+eight arm64 Lambdas with a role each, two DynamoDB tables, a customer-managed KMS key,
+Secrets Manager, EventBridge Scheduler (every 15 minutes, and nightly for the demo
+reset), SNS, four alarms, and an
 S3 + CloudFront front end with OAC. Around £2/month, nearly all of it the KMS key.
 
 Verified against the live stack: the access gate on both paths, CSP headers, the ambient
@@ -557,9 +593,12 @@ Honest list. None of it is hidden behind a button that does nothing.
 
 - **Real per-user authentication.** One shared access code is a demo gate. A real
   deployment needs accounts, and account linking is the natural place for it.
-- **Native Alexa+ integration.** The client here is ours because a third-party MCP
-  server cannot yet be registered with Alexa+ from outside the programme. The server is
-  ready for it.
+- **Native Alexa+ integration.** The client here is ours because the Alexa+ MCP
+  Toolkit, CLI and simulator are available to select partners only, which the
+  hackathon FAQ confirms. The server meets the published requirements except OAuth
+  (see the table above); onboarding would be `alexa-ai new mcp` pointing at `/mcp`.
+- **Cold starts.** ~1.4 s against a 500 ms budget. One instance of provisioned
+  concurrency would remove them for roughly $7 a month, which isn't worth it for a demo.
 - **Token refresh.** Access tokens last ~4 hours and refresh tokens ~30 days. An
   expired refresh token cannot be recovered — the user must re-link, which resets the
   consent date and therefore discards the accumulated baseline. Needs a scheduled job

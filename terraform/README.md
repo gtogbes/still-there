@@ -1,6 +1,6 @@
 # Deploying StillThere
 
-Seven Lambda functions behind an HTTP API, two DynamoDB tables, one KMS key, two
+Eight Lambda functions, seven of them behind an HTTP API, two DynamoDB tables, one KMS key, two
 secrets, a scheduled assessment, and an S3 + CloudFront front end for the web app.
 Region is `us-east-1`. Cost at this scale is a couple of pounds a month, nearly all of
 it the KMS key — everything else is pay-per-request and idle costs nothing.
@@ -43,7 +43,7 @@ terraform -chdir=terraform output -raw web_url
 
 ## Why it is built this way
 
-**A role per function.** Seven near-identical IAM policies rather than one shared
+**A role per function.** Eight near-identical IAM policies rather than one shared
 role, so the webhook cannot read OAuth tokens, the token exchange cannot write to the
 event stream, and the MCP function cannot invoke Bedrock. Cheap insurance on a blast
 radius.
@@ -94,7 +94,7 @@ that at 10 requests per second, and every handler rejects before doing real work
 
 ## Alarms
 
-Three, all on symptoms rather than causes, and all only wired up if you set
+Four, all on symptoms rather than causes, and all only wired up if you set
 `alarm_email`.
 
 Rejected signatures are worth knowing about because there are only two explanations:
@@ -109,6 +109,18 @@ The third is the one that would actually have caught a real outage: the schedule
 assessment not running. If it stops, nothing errors and no alert is ever raised, so
 the product fails by going quiet. That is indistinguishable from a household where
 everything is fine, which is the whole reason it needs an alarm of its own.
+
+The fourth exists only on demo deployments: the nightly reset of the simulated
+household failing. If it fails, anyone opening the demo sees yesterday's story.
+
+## The simulated household
+
+With `demo_reset_enabled = true`, a schedule at 00:05 Europe/London rebuilds the
+synthetic household: six weeks of ordinary history, today's missing morning, camera
+health covering today, and then three runs of the deployed assessment to produce the
+day's messages. It deletes and rewrites the configured household, so the handler
+refuses to run unless `DEMO_RESET=enabled` — which only this variable sets. Never turn
+it on for a deployment with a real home behind it.
 
 ## Not yet here
 

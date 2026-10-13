@@ -79,14 +79,15 @@ export async function handler(event: LambdaEvent): Promise<LambdaResponse> {
 
   // Access first, before any work. Unauthenticated requests get a 401 and never
   // reach DynamoDB, and pause_monitoring cannot be called by a stranger.
+  //
+  // No WWW-Authenticate header, deliberately: the Alexa+ MCP requirements ask for a
+  // bare 401 and list the header as unsupported. Clients are told how to
+  // authenticate in the body instead.
   const access = await checkAccess(event.headers);
   if (!access.allowed) {
     return {
       statusCode: 401,
-      headers: {
-        'Content-Type': 'application/json',
-        'WWW-Authenticate': 'Bearer realm="still-there"',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         error: { code: -32001, message: 'unauthorised: present the access code as a Bearer token' },
