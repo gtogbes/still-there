@@ -47,6 +47,11 @@ locals {
       timeout     = 29
       memory      = 1024
     }
+    demo-reset = {
+      description = "Rebuilds the simulated household for a new day. Demo deployments only."
+      timeout     = 180
+      memory      = 1024
+    }
   }
 
   # Bedrock ARNs a cross-region inference profile may route to. Shared by the

@@ -37,16 +37,26 @@ export function shouldNotify(input: {
   readonly dateKey: string;
   readonly evaluatedAt: number;
   readonly prior: readonly PriorNotification[];
+  /**
+   * 'replay' when an assessment is asked about a chosen moment, 'live' when it is
+   * the scheduled run reading the real clock. Defaults to 'replay'.
+   */
+  readonly mode?: 'live' | 'replay';
 }): NotifyDecision {
   if (input.severity === null) {
     return { send: false, reason: 'nothing to report' };
   }
 
-  // Only today's messages, and only ones sent before this moment. The second
-  // condition matters when an assessment is replayed for an earlier time: a message
-  // sent at 11:00 must not suppress one that would have been sent at 09:30.
+  // Only today's messages. When replaying, only ones sent before this moment too: a
+  // message recorded at 11:00 must not suppress one that would have gone at 09:30.
+  //
+  // A live run counts all of today. In normal operation that changes nothing, since
+  // a record from later than now cannot exist. It exists only when a day was scripted
+  // in advance — the simulated household, whose morning is produced at midnight —
+  // and then the live run should defer to it rather than send a duplicate.
   const today = input.prior.filter(
-    (p) => p.dateKey === input.dateKey && p.evaluatedAt < input.evaluatedAt,
+    (p) =>
+      p.dateKey === input.dateKey && (input.mode === 'live' || p.evaluatedAt < input.evaluatedAt),
   );
 
   if (today.length === 0) {

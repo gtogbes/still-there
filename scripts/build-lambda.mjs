@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outdir = join(root, 'dist', 'handlers');
 
-const HANDLERS = ['webhook', 'token', 'link', 'home', 'assess', 'mcp', 'assistant'];
+const HANDLERS = ['webhook', 'token', 'link', 'home', 'assess', 'mcp', 'assistant', 'demo-reset'];
 
 /**
  * Operator scripts that import domain code.

@@ -114,16 +114,21 @@ export async function handler(event: ScheduledEvent = {}): Promise<AssessmentSum
   // is news. Blind spots are excluded entirely: a camera that stopped reporting is a
   // maintenance job, and routing it to family alongside welfare nudges is how the
   // channel gets muted.
+  // A scheduled run reads the clock; a replay is handed a moment. Live runs look at
+  // the whole of today so they defer to a day that was scripted in advance.
+  const mode = event.evaluatedAt === undefined ? 'live' : 'replay';
+  const priorUntil = mode === 'live' ? dayStart + 86_400_000 : evaluatedAt - 1;
+
   const earlierToday =
     severity === null
       ? []
-      : (await assessmentsBetween(tables, householdId, dayStart, evaluatedAt - 1)).flatMap((a) =>
+      : (await assessmentsBetween(tables, householdId, dayStart, priorUntil)).flatMap((a) =>
           a.notification === undefined
             ? []
             : [{ evaluatedAt: a.evaluatedAt, dateKey: a.dateKey, severity: a.notification.severity }],
         );
 
-  const decision = shouldNotify({ severity, dateKey, evaluatedAt, prior: earlierToday });
+  const decision = shouldNotify({ severity, dateKey, evaluatedAt, prior: earlierToday, mode });
 
   let narration: Narration = { text: '', source: 'fallback' };
   let delivery: NotifyResult = { delivered: false, reason: decision.reason };

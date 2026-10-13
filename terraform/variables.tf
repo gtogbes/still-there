@@ -116,6 +116,18 @@ variable "demo_clock_enabled" {
   default     = true
 }
 
+variable "demo_reset_enabled" {
+  description = <<-EOT
+    Whether the simulated household is rebuilt every night just after midnight.
+
+    The demo has to tell the same story on any day someone opens it. This deletes and
+    rewrites the configured household's history, so it must only ever be on for a
+    deployment whose household is synthetic. The handler refuses to run without it.
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "assessment_enabled" {
   description = <<-EOT
     Whether the scheduled assessment runs.

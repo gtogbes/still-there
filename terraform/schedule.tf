@@ -36,8 +36,11 @@ resource "aws_iam_role" "scheduler" {
 
 data "aws_iam_policy_document" "scheduler_invoke" {
   statement {
-    actions   = ["lambda:InvokeFunction"]
-    resources = [aws_lambda_function.handler["assess"].arn]
+    actions = ["lambda:InvokeFunction"]
+    resources = concat(
+      [aws_lambda_function.handler["assess"].arn],
+      var.demo_reset_enabled ? [aws_lambda_function.handler["demo-reset"].arn] : [],
+    )
   }
 }
 
@@ -108,4 +111,57 @@ resource "aws_cloudwatch_metric_alarm" "assessment_stopped" {
 
   alarm_actions = var.alarm_email == "" ? [] : [aws_sns_topic.alarms[0].arn]
   ok_actions    = var.alarm_email == "" ? [] : [aws_sns_topic.alarms[0].arn]
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Nightly reset of the simulated household
+#
+# Demo deployments only. Five past midnight in the household's own time zone, so the
+# new local day is rebuilt before anybody could ask about its morning. Quiet hours
+# run until 06:00, so the live assessment has nothing to say in the gap.
+# ──────────────────────────────────────────────────────────────────────────────
+
+resource "aws_scheduler_schedule" "demo_reset" {
+  count       = var.demo_reset_enabled ? 1 : 0
+  name        = "${local.name}-demo-reset"
+  description = "Rebuilds the simulated household for the new day."
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  schedule_expression          = "cron(5 0 * * ? *)"
+  schedule_expression_timezone = "Europe/London"
+
+  target {
+    arn      = aws_lambda_function.handler["demo-reset"].arn
+    role_arn = aws_iam_role.scheduler.arn
+    input    = jsonencode({})
+
+    retry_policy {
+      maximum_retry_attempts       = 2
+      maximum_event_age_in_seconds = 3600
+    }
+  }
+}
+
+# A failed reset leaves judges looking at yesterday. Worth knowing about.
+resource "aws_cloudwatch_metric_alarm" "demo_reset_failed" {
+  count               = var.demo_reset_enabled ? 1 : 0
+  alarm_name          = "${local.name}-demo-reset-failed"
+  alarm_description   = "The nightly reset of the simulated household failed. The demo is showing a stale day."
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
+  statistic           = "Sum"
+  period              = 3600
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    FunctionName = aws_lambda_function.handler["demo-reset"].function_name
+  }
+
+  alarm_actions = var.alarm_email == "" ? [] : [aws_sns_topic.alarms[0].arn]
 }

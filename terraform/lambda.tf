@@ -208,6 +208,37 @@ resource "aws_iam_role_policy" "assistant" {
   policy = data.aws_iam_policy_document.assistant.json
 }
 
+# The reset rewrites the simulated household, then asks the deployed assessment to
+# run. It does not call Bedrock or SNS itself — the assessment does that, under its
+# own role — so the messages are produced exactly the way real ones would be.
+data "aws_iam_policy_document" "demo_reset" {
+  statement {
+    actions   = ["dynamodb:Query", "dynamodb:BatchWriteItem"]
+    resources = [aws_dynamodb_table.events.arn]
+  }
+
+  statement {
+    actions   = ["dynamodb:PutItem"]
+    resources = [aws_dynamodb_table.state.arn]
+  }
+
+  statement {
+    actions   = ["lambda:InvokeFunction"]
+    resources = [aws_lambda_function.handler["assess"].arn]
+  }
+
+  statement {
+    actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
+    resources = [aws_kms_key.main.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "demo_reset" {
+  name   = "access"
+  role   = aws_iam_role.handler["demo-reset"].id
+  policy = data.aws_iam_policy_document.demo_reset.json
+}
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Functions
 # ──────────────────────────────────────────────────────────────────────────────
@@ -253,6 +284,11 @@ resource "aws_lambda_function" "handler" {
       ASSISTANT_MODEL_ID     = var.narration_model_id
       RESIDENT_NAME          = var.resident_name
       DEMO_CLOCK             = var.demo_clock_enabled ? "enabled" : "disabled"
+
+      # Only the reset reads these. A name rather than a reference, because a
+      # reference to the assess function from the shared block would be a cycle.
+      DEMO_RESET           = var.demo_reset_enabled ? "enabled" : "disabled"
+      ASSESS_FUNCTION_NAME = "${local.name}-assess"
     }
   }
 

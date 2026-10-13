@@ -75,6 +75,24 @@ describe('when to contact the family', () => {
     expect(decision.send).toBe(true);
   });
 
+  it('in a live run, defers to a morning scripted in advance', () => {
+    // The simulated household's three messages are produced at midnight. The real
+    // 08:30 run must not send a fourth just because the 09:00 one is "later".
+    const decision = shouldNotify({
+      severity: 'low',
+      dateKey: DAY,
+      evaluatedAt: at(8, 30),
+      prior: [sent(9, 'low'), sent(11, 'medium'), sent(12, 'high')],
+      mode: 'live',
+    });
+    expect(decision.send).toBe(false);
+  });
+
+  it('in a live run, still sends when nothing has been recorded today', () => {
+    const decision = shouldNotify({ severity: 'low', dateKey: DAY, evaluatedAt: at(8, 30), prior: [], mode: 'live' });
+    expect(decision).toEqual({ send: true, reason: 'first today' });
+  });
+
   it('ignores messages from later in the day when replaying an earlier moment', () => {
     const decision = shouldNotify({
       severity: 'low',
