@@ -37,7 +37,7 @@ function webhook(
       version: '1.1',
       time: new Date(timestamp).toISOString(),
       request_id: `req-${type}-${timestamp}`,
-      account_id: 'acct-ese',
+      account_id: 'acct-jasmine',
     },
     data: {
       id: `evt-${type}-${timestamp}`,
@@ -73,7 +73,7 @@ describe('activity events', () => {
     expect(result.outcome).toBe('ok');
     if (result.outcome !== 'ok') return;
     expect(result.value.context.requestId).toBe('req-motion_detected-1757492100000');
-    expect(result.value.context.accountId).toBe('acct-ese');
+    expect(result.value.context.accountId).toBe('acct-jasmine');
   });
 
   it('reads a contact sensor fault as a door opening', () => {

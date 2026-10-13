@@ -22,7 +22,7 @@ import { occupancyEvents } from '../src/domain/occupancy.ts';
 import { addDays, dayClassOf, formatMinute, fromLocal, weekdayOf } from '../src/domain/time.ts';
 import { fallbackNarration } from '../src/narration/validate.ts';
 import { generateHistory, eventsOnDate, healthySnapshot, blindSnapshot } from '../src/testing/generator.ts';
-import { ese } from '../src/testing/personas.ts';
+import { jasmine } from '../src/testing/personas.ts';
 
 const BOLD = '\u001b[1m';
 const DIM = '\u001b[2m';
@@ -48,7 +48,7 @@ function step(n, total, title) {
   console.log(`\n${bold(`[${n}/${total}]`)} ${bold(title)}`);
 }
 
-const TZ = ese.config.timeZone;
+const TZ = jasmine.config.timeZone;
 const LEARN_DAYS = 42;
 const HISTORY_START = '2026-08-01';
 
@@ -76,7 +76,7 @@ ${bold('StillThere')} ${dim('— it notices the things that did not happen')}
 `);
 rule();
 console.log(`
-Ese is 82 and lives alone. Her Ring devices already record when she moves around
+Jasmine is 82 and lives alone. Her Ring devices already record when she moves around
 the house. This is what StillThere does with that.
 
 ${dim('Time is compressed, not faked. Every event below carries a real timestamp;')}
@@ -86,12 +86,12 @@ rule();
 
 // ── 1. Learn ────────────────────────────────────────────────────────────────
 
-step(1, 5, `Learning Ese's routine from ${LEARN_DAYS} days of history`);
+step(1, 5, `Learning Jasmine's routine from ${LEARN_DAYS} days of history`);
 await pause(600);
 
-const history = generateHistory(ese, { startDateKey: HISTORY_START, days: LEARN_DAYS, seed: 41 });
-const occupancy = occupancyEvents(history, ese.config);
-const baseline = learnBaseline(history, ese.config);
+const history = generateHistory(jasmine, { startDateKey: HISTORY_START, days: LEARN_DAYS, seed: 41 });
+const occupancy = occupancyEvents(history, jasmine.config);
+const baseline = learnBaseline(history, jasmine.config);
 
 console.log(
   dim(
@@ -111,7 +111,7 @@ for (const anchor of weekday) {
 }
 console.log(
   dim(
-    `\n      Habits below 95% reliability are discarded. Ese does laundry upstairs on\n` +
+    `\n      Habits below 95% reliability are discarded. Jasmine does laundry upstairs on\n` +
       `      Tuesdays and Fridays — that is 40% of working days, so it is not a habit\n` +
       `      and alerting on its absence would be noise.`,
   ),
@@ -124,16 +124,16 @@ step(2, 5, 'An ordinary day. Asking the system at midday');
 await pause(600);
 
 const normalEvents = eventsOnDate(
-  generateHistory(ese, { startDateKey: NORMAL_DAY, days: 1, seed: 77 }),
+  generateHistory(jasmine, { startDateKey: NORMAL_DAY, days: 1, seed: 77 }),
   NORMAL_DAY,
   TZ,
 );
 const noonNormal = fromLocal(NORMAL_DAY, 12 * 60, TZ);
 const normal = assess({
   baseline,
-  config: ese.config,
+  config: jasmine.config,
   todaysEvents: normalEvents,
-  health: healthySnapshot(ese, noonNormal),
+  health: healthySnapshot(jasmine, noonNormal),
   evaluatedAt: noonNormal,
 });
 
@@ -148,25 +148,25 @@ await pause(2500);
 
 // ── 3. The bad day, too early to tell ───────────────────────────────────────
 
-step(3, 5, "Another day. Ese doesn't come downstairs. Asking at 08:00");
+step(3, 5, "Another day. Jasmine doesn't come downstairs. Asking at 08:00");
 await pause(600);
 
 const badEvents = eventsOnDate(
-  generateHistory(ese, { startDateKey: BAD_DAY, days: 1, seed: 91, omit: () => true }),
+  generateHistory(jasmine, { startDateKey: BAD_DAY, days: 1, seed: 91, omit: () => true }),
   BAD_DAY,
   TZ,
 );
 
 const catEvents = badEvents.filter(
-  (e) => e.subject === 'other' && ese.config.interiorZones.includes(e.zone),
+  (e) => e.subject === 'other' && jasmine.config.interiorZones.includes(e.zone),
 );
 
 const early = fromLocal(BAD_DAY, 8 * 60, TZ);
 const earlyAssessment = assess({
   baseline,
-  config: ese.config,
+  config: jasmine.config,
   todaysEvents: badEvents,
-  health: healthySnapshot(ese, early),
+  health: healthySnapshot(jasmine, early),
   evaluatedAt: early,
 });
 
@@ -195,9 +195,9 @@ await pause(600);
 const mid = fromLocal(BAD_DAY, 9 * 60 + 30, TZ);
 const midAssessment = assess({
   baseline,
-  config: ese.config,
+  config: jasmine.config,
   todaysEvents: badEvents,
-  health: healthySnapshot(ese, mid),
+  health: healthySnapshot(jasmine, mid),
   evaluatedAt: mid,
 });
 const midFindings = deviations(midAssessment);
@@ -216,9 +216,9 @@ await pause(600);
 const late = fromLocal(BAD_DAY, 12 * 60 + 26, TZ);
 const lateAssessment = assess({
   baseline,
-  config: ese.config,
+  config: jasmine.config,
   todaysEvents: badEvents,
-  health: healthySnapshot(ese, late),
+  health: healthySnapshot(jasmine, late),
   evaluatedAt: late,
 });
 const lateFindings = deviations(lateAssessment);
@@ -251,7 +251,7 @@ console.log(`\n${bold('Two things it would have been easy to get wrong')}\n`);
 console.log(`  ${bold('1. The cat.')}`);
 console.log(
   dim(
-    `     ${catEvents.length} interior movements today, none of them Ese. Ring classifies motion as\n` +
+    `     ${catEvents.length} interior movements today, none of them Jasmine. Ring classifies motion as\n` +
       `     a person, a vehicle or unidentified, and only a person counts as somebody\n` +
       `     being up. Accept the cat and the system reports a normal morning for a\n` +
       `     house nobody got out of bed in.`,
@@ -260,9 +260,9 @@ console.log(
 
 const blindAssessment = assess({
   baseline,
-  config: ese.config,
+  config: jasmine.config,
   todaysEvents: badEvents,
-  health: blindSnapshot(ese, late, 'stale'),
+  health: blindSnapshot(jasmine, late, 'stale'),
   evaluatedAt: late,
 });
 

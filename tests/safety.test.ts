@@ -3,7 +3,7 @@ import { learnBaseline } from '../src/domain/baseline.js';
 import { assess, blindSpots, deviations } from '../src/domain/deviation.js';
 import { fromLocal } from '../src/domain/time.js';
 import { blindSnapshot, eventsOnDate, generateHistory, healthySnapshot } from '../src/testing/generator.js';
-import { ese } from '../src/testing/personas.js';
+import { jasmine } from '../src/testing/personas.js';
 import type { Finding } from '../src/domain/types.js';
 
 /**
@@ -40,16 +40,16 @@ const FORBIDDEN_SPECULATION = [
 
 const START = '2026-06-01';
 const TEST_DAY = '2026-07-13';
-const TZ = ese.config.timeZone;
+const TZ = jasmine.config.timeZone;
 const noon = fromLocal(TEST_DAY, 12 * 60, TZ);
 
 const baseline = learnBaseline(
-  generateHistory(ese, { startDateKey: START, days: 42, seed: 1 }),
-  ese.config,
+  generateHistory(jasmine, { startDateKey: START, days: 42, seed: 1 }),
+  jasmine.config,
 );
 
 const deadDayEvents = eventsOnDate(
-  generateHistory(ese, { startDateKey: TEST_DAY, days: 1, seed: 501, omit: () => true }),
+  generateHistory(jasmine, { startDateKey: TEST_DAY, days: 1, seed: 501, omit: () => true }),
   TEST_DAY,
   TZ,
 );
@@ -57,7 +57,7 @@ const deadDayEvents = eventsOnDate(
 function findingsWith(health: Parameters<typeof assess>[0]['health']): readonly Finding[] {
   return assess({
     baseline,
-    config: ese.config,
+    config: jasmine.config,
     todaysEvents: deadDayEvents,
     health,
     evaluatedAt: noon,
@@ -65,8 +65,8 @@ function findingsWith(health: Parameters<typeof assess>[0]['health']): readonly 
 }
 
 describe('what an alert is allowed to say', () => {
-  const observed = findingsWith(healthySnapshot(ese, noon));
-  const blind = findingsWith(blindSnapshot(ese, noon, 'offline'));
+  const observed = findingsWith(healthySnapshot(jasmine, noon));
+  const blind = findingsWith(blindSnapshot(jasmine, noon, 'offline'));
   const all = [...observed, ...blind];
 
   it('produces something to check', () => {
@@ -108,9 +108,9 @@ describe('blind spots are maintenance, not emergencies', () => {
   const blind = blindSpots(
     assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: deadDayEvents,
-      health: blindSnapshot(ese, noon, 'offline'),
+      health: blindSnapshot(jasmine, noon, 'offline'),
       evaluatedAt: noon,
     }),
   );
@@ -137,9 +137,9 @@ describe('observed deviations state the absence plainly', () => {
   const found = deviations(
     assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: deadDayEvents,
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     }),
   );

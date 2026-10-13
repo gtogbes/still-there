@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { eventsBetween } from '../storage/events.js';
-import { getHousehold, putHousehold } from '../storage/household.js';
-import { recentAssessments } from '../storage/assessments.js';
+import { getHousehold, putHousehold, type StoredHousehold } from '../storage/household.js';
+import { lastNotificationBefore } from '../storage/assessments.js';
 import { deviceHealthFor } from '../storage/state.js';
 import type { TableNames } from '../storage/tables.js';
 import {
@@ -10,53 +10,72 @@ import {
   buildSuppression,
   describeRoutine,
   describeSuppression,
+  endSuppressions,
   explainAssessment,
   householdStatus,
+  type ToolAnswer,
 } from './tools.js';
 
 /**
  * StillThere as an MCP server.
  *
- * Four tools, written to be *asked* rather than read. The interesting one is
- * `explain_last_alert`: a monitoring product usually cannot tell you why it contacted
- * you, because the reasoning existed only for as long as the alert took to send. Here
- * every assessment is stored with the habit, the time expected and how dependable
- * that habit had been, so the explanation is recalled rather than reconstructed.
+ * Five tools, written to be asked rather than read. Every result carries both a
+ * sentence (for speech) and structuredContent (for a screen), so the same server
+ * serves a voice-only assistant and a display device without either compromising.
  *
- * `pause_monitoring` is the only tool that writes, and it earns its place: without it
- * the system cries wolf for the whole of a fortnight's holiday, which is the fastest
- * way to get a monitoring product muted for good.
+ * The interesting one is `explain_last_alert`. A monitoring product usually cannot
+ * tell you why it contacted you, because the reasoning existed only as long as the
+ * alert took to send. Here the exact message and the findings behind it are stored,
+ * so the explanation is recalled rather than reconstructed.
  *
- * Deliberately no tool returns raw events, device identifiers or images. The questions
- * are about a person, and the answers are sentences.
+ * No tool returns raw events, device identifiers or images.
  */
 
 export interface ServerDeps {
   readonly tables: TableNames;
   readonly householdId: string;
-  /** Injected so tests can fix the instant, consistent with the rest of the codebase. */
-  readonly now: () => number;
+  /**
+   * The current instant, given the household's time zone.
+   *
+   * A function of the zone because the demo clock sets a local time of day — "show
+   * me 09:30" — and that can only become an instant once we know where the house is.
+   */
+  readonly now: (timeZone: string) => number;
+}
+
+const NO_HOUSEHOLD = {
+  content: [{ type: 'text' as const, text: 'No household is set up yet, so there is nothing to check.' }],
+};
+
+function result<T extends object>(answer: ToolAnswer<T>) {
+  return {
+    content: [{ type: 'text' as const, text: answer.text }],
+    structuredContent: answer.data as Record<string, unknown>,
+  };
 }
 
 export function buildMcpServer(deps: ServerDeps): McpServer {
   const server = new McpServer(
-    { name: 'still-there', version: '0.1.0' },
+    { name: 'still-there', version: '0.2.0' },
     {
       instructions: [
         'StillThere watches for the daily activity that did NOT happen in an older',
-        "person's home, using their existing Ring devices, and tells family when a",
-        'usual habit is overdue.',
+        "person's home, and tells family when a usual habit is overdue.",
         '',
-        'Use still_there_status for "is she up yet" or "is everything alright".',
-        'Use explain_last_alert when asked why a message was sent.',
-        'Use describe_routine for "what does a normal day look like for her".',
-        'Use pause_monitoring when told the resident is away.',
+        'still_there_status — "is she up yet", "is everything alright", "any news"',
+        'explain_last_alert — "why did you message me", "what was that about"',
+        'describe_routine   — "what does a normal day look like for her"',
+        'pause_monitoring   — "she is away this week" (ask how many days if unclear)',
+        'resume_monitoring  — "she is back", "start watching again"',
         '',
-        'Never speculate about why activity is missing. Report what is overdue and by',
-        'how much. Do not suggest medical causes.',
+        'Never speculate about why activity is missing, and never suggest medical',
+        'causes. Report what is overdue and by how much.',
       ].join('\n'),
     },
   );
+
+  const load = async (): Promise<StoredHousehold | undefined> =>
+    getHousehold(deps.tables, deps.householdId);
 
   server.registerTool(
     'still_there_status',
@@ -67,14 +86,10 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
       inputSchema: {},
     },
     async () => {
-      const household = await getHousehold(deps.tables, deps.householdId);
-      if (household === undefined) {
-        return {
-          content: [{ type: 'text', text: 'No household is set up yet, so there is nothing to check.' }],
-        };
-      }
+      const household = await load();
+      if (household === undefined) return NO_HOUSEHOLD;
 
-      const evaluatedAt = deps.now();
+      const evaluatedAt = deps.now(household.timeZone);
       const window = baselineWindow(evaluatedAt, household.timeZone);
       const [historyEvents, todaysEvents, health] = await Promise.all([
         eventsBetween(deps.tables, deps.householdId, window.learnFrom, window.dayStart),
@@ -82,15 +97,9 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
         deviceHealthFor(deps.tables, deps.householdId),
       ]);
 
-      const { text } = householdStatus({
-        household,
-        historyEvents,
-        todaysEvents,
-        health,
-        evaluatedAt,
-      });
-
-      return { content: [{ type: 'text', text }] };
+      return result(
+        householdStatus({ household, historyEvents, todaysEvents, health, evaluatedAt }),
+      );
     },
   );
 
@@ -99,27 +108,19 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
     {
       title: 'Explain the last alert',
       description:
-        'Why StillThere last got in touch: which habits were missed, when they were expected, and how consistent they had been. Use for "why did you message me", "what was that about".',
+        'Why StillThere last got in touch: the exact message sent, which habits were missed, when they were expected, and how consistent they had been. Use for "why did you message me", "what was that about".',
       inputSchema: {},
     },
     async () => {
-      const household = await getHousehold(deps.tables, deps.householdId);
-      if (household === undefined) {
-        return { content: [{ type: 'text', text: 'No household is set up yet.' }] };
-      }
+      const household = await load();
+      if (household === undefined) return NO_HOUSEHOLD;
 
-      const recent = await recentAssessments(deps.tables, deps.householdId, 25);
-      // The most recent assessment that actually found something. Walking back past
-      // the quiet ones matters: the last run is almost always "nothing to report",
-      // and answering with that would be useless to somebody holding a phone asking
-      // why it buzzed an hour ago.
-      const lastAlerting = recent.find((a) =>
-        a.findings.some((f) => f.type === 'deviation'),
+      const last = await lastNotificationBefore(
+        deps.tables,
+        deps.householdId,
+        deps.now(household.timeZone),
       );
-
-      return {
-        content: [{ type: 'text', text: explainAssessment(lastAlerting, household.timeZone) }],
-      };
+      return result(explainAssessment(last, household.timeZone));
     },
   );
 
@@ -132,20 +133,17 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
       inputSchema: {},
     },
     async () => {
-      const household = await getHousehold(deps.tables, deps.householdId);
-      if (household === undefined) {
-        return { content: [{ type: 'text', text: 'No household is set up yet.' }] };
-      }
+      const household = await load();
+      if (household === undefined) return NO_HOUSEHOLD;
 
-      const window = baselineWindow(deps.now(), household.timeZone);
+      const window = baselineWindow(deps.now(household.timeZone), household.timeZone);
       const historyEvents = await eventsBetween(
         deps.tables,
         deps.householdId,
         window.learnFrom,
-        window.dayEnd,
+        window.dayStart,
       );
-
-      return { content: [{ type: 'text', text: describeRoutine(household, historyEvents) }] };
+      return result(describeRoutine(household, historyEvents));
     },
   );
 
@@ -154,7 +152,7 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
     {
       title: 'Pause monitoring while the resident is away',
       description:
-        'Stop raising alerts for a number of days, for a holiday or a hospital stay. Activity is still recorded so the learned routine is not lost. Use for "Mum is away this week", "stop watching until Friday".',
+        'Stop raising alerts for a number of days, for a holiday or a stay elsewhere. Activity is still recorded so the learned routine is not lost. Use for "Mum is away this week", "stop watching until Friday".',
       inputSchema: {
         days: z
           .number()
@@ -166,31 +164,51 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
           .string()
           .max(120)
           .optional()
-          .describe('Why, in a few words — "away visiting family", "in hospital".'),
+          .describe('Why, in a few words — "visiting family", "on holiday".'),
       },
     },
     async ({ days, reason }) => {
-      const household = await getHousehold(deps.tables, deps.householdId);
-      if (household === undefined) {
-        return { content: [{ type: 'text', text: 'No household is set up yet.' }] };
-      }
+      const household = await load();
+      if (household === undefined) return NO_HOUSEHOLD;
 
-      const now = deps.now();
+      const now = deps.now(household.timeZone);
       const window = buildSuppression(now, days, reason ?? 'away');
-
-      // Existing expired windows are dropped rather than accumulated. They have no
-      // effect, and a suppression list that only ever grows is a slow leak.
+      // Expired windows are dropped rather than accumulated: they have no effect,
+      // and a list that only ever grows is a slow leak.
       const retained = household.suppressions.filter((w) => w.to > now);
 
       await putHousehold(deps.tables, {
         ...household,
         suppressions: [...retained, window],
-        updatedAt: now,
+        updatedAt: Date.now(),
       });
 
-      return {
-        content: [{ type: 'text', text: describeSuppression(window, household.timeZone) }],
-      };
+      return result(describeSuppression(window, household.timeZone));
+    },
+  );
+
+  server.registerTool(
+    'resume_monitoring',
+    {
+      title: 'Resume monitoring',
+      description:
+        'End a pause early because the resident is home again. Use for "she is back", "start watching again".',
+      inputSchema: {},
+    },
+    async () => {
+      const household = await load();
+      if (household === undefined) return NO_HOUSEHOLD;
+
+      const { remaining, answer } = endSuppressions(
+        household.suppressions,
+        deps.now(household.timeZone),
+      );
+      await putHousehold(deps.tables, {
+        ...household,
+        suppressions: remaining,
+        updatedAt: Date.now(),
+      });
+      return result(answer);
     },
   );
 

@@ -10,7 +10,7 @@ describe('local time handling', () => {
   });
 
   it('keeps a routine at the same wall-clock time across the autumn DST change', () => {
-    // UK clocks go back on 2026-10-25. Ese still gets up at 07:40; if the
+    // UK clocks go back on 2026-10-25. Jasmine still gets up at 07:40; if the
     // baseline were stored as a UTC offset it would drift by an hour overnight
     // and the system would spend a week reporting a problem that is not there.
     const before = localParts(fromLocal('2026-10-24', 460, 'Europe/London'), 'Europe/London');

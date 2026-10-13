@@ -25,7 +25,7 @@ import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { addDays, fromLocal, localParts } from '../src/domain/time.ts';
-import { ese } from '../src/testing/personas.ts';
+import { jasmine } from '../src/testing/personas.ts';
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -65,7 +65,7 @@ const doc = DynamoDBDocumentClient.from(new DynamoDBClient({ region }), {
 
 const STATE_TABLE = `${stack}-state`;
 const EVENTS_TABLE = `${stack}-events`;
-const TZ = ese.config.timeZone;
+const TZ = jasmine.config.timeZone;
 
 function hmacKey() {
   // Resolved from the working directory, not from import.meta.url. This file is
@@ -129,7 +129,7 @@ async function askAt(dateKey, minute) {
 /** Device health goes stale after 45 minutes, and a stale camera cannot witness anything. */
 async function refreshHealth() {
   const now = Date.now();
-  for (const device of ese.devices) {
+  for (const device of jasmine.devices) {
     await doc.send(
       new PutCommand({
         TableName: STATE_TABLE,
@@ -235,7 +235,7 @@ await pause(2500);
 
 await refreshHealth();
 
-console.log(`\n${bold('[3/6]')} ${bold("Ese hasn't come downstairs. Asking at 08:00")}`);
+console.log(`\n${bold('[3/6]')} ${bold("Jasmine hasn't come downstairs. Asking at 08:00")}`);
 await pause(700);
 const early = await askAt(today, 8 * 60);
 console.log(
@@ -290,7 +290,7 @@ await pause(3500);
 
 // 6. Withdrawal of consent
 
-console.log(`\n${bold('[6/6]')} ${bold('Ese\u2019s daughter removes the integration in the Ring app')}`);
+console.log(`\n${bold('[6/6]')} ${bold('Jasmine\u2019s daughter removes the integration in the Ring app')}`);
 await pause(700);
 const stored = await countEvents();
 const revoked = await sendWebhook('app_integration_removed', 'dev-hallway');

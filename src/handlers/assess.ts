@@ -6,7 +6,8 @@ import { publishNotification, type NotifyResult } from '../notify/publish.js';
 import { eventsBetween } from '../storage/events.js';
 import { getHousehold } from '../storage/household.js';
 import { deviceHealthFor } from '../storage/state.js';
-import { putAssessment } from '../storage/assessments.js';
+import { assessmentsBetween, putAssessment } from '../storage/assessments.js';
+import { shouldNotify } from '../notify/policy.js';
 import { tableNames } from '../storage/tables.js';
 
 /**
@@ -41,6 +42,10 @@ export interface AssessmentSummary {
   readonly suppressed: boolean;
   /** The notification text, so a caller can see it without reading logs. */
   readonly message: string;
+  /** Whether the family was contacted on this run. */
+  readonly notified: boolean;
+  /** Why or why not, e.g. "first today", "escalated", "already told the family". */
+  readonly notifyDecision: string;
   /** 'model' when Bedrock wrote it, 'fallback' when the deterministic text was used. */
   readonly narrationSource: string;
   /** Why the model's output was not used, when it was not. */
@@ -70,6 +75,8 @@ export async function handler(event: ScheduledEvent = {}): Promise<AssessmentSum
       severity: null,
       suppressed: true,
       message: '',
+      notified: false,
+      notifyDecision: 'no household configured',
       narrationSource: 'none',
       reasons: [],
     };
@@ -103,20 +110,25 @@ export async function handler(event: ScheduledEvent = {}): Promise<AssessmentSum
   const blind = blindSpots(assessment);
   const severity = peakSeverity(assessment);
 
-  await putAssessment(tables, assessment, {
-    anchorCount: baseline.anchors.length,
-    historyDays: baseline.daysObserved,
-    eventsToday: todaysEvents.length,
-  });
+  // Narrate and notify only when there is something real to say, and only when it
+  // is news. Blind spots are excluded entirely: a camera that stopped reporting is a
+  // maintenance job, and routing it to family alongside welfare nudges is how the
+  // channel gets muted.
+  const earlierToday =
+    severity === null
+      ? []
+      : (await assessmentsBetween(tables, householdId, dayStart, evaluatedAt - 1)).flatMap((a) =>
+          a.notification === undefined
+            ? []
+            : [{ evaluatedAt: a.evaluatedAt, dateKey: a.dateKey, severity: a.notification.severity }],
+        );
 
-  // Narrate and notify only when there is something real to say. Blind spots are
-  // deliberately excluded: a camera that stopped reporting is a maintenance job, and
-  // routing it to family alongside genuine welfare nudges is how the whole channel
-  // gets muted.
+  const decision = shouldNotify({ severity, dateKey, evaluatedAt, prior: earlierToday });
+
   let narration: Narration = { text: '', source: 'fallback' };
-  let delivery: NotifyResult = { delivered: false, reason: 'nothing to report' };
+  let delivery: NotifyResult = { delivered: false, reason: decision.reason };
 
-  if (found.length > 0 && severity !== null) {
+  if (decision.send && severity !== null) {
     narration = await narrate({
       findings: found,
       severity,
@@ -130,6 +142,24 @@ export async function handler(event: ScheduledEvent = {}): Promise<AssessmentSum
       narration.text,
     );
   }
+
+  // Written after narration so the record holds the exact words the family read.
+  // That is what lets "why did you message me" quote the message back.
+  await putAssessment(tables, assessment, {
+    anchorCount: baseline.anchors.length,
+    historyDays: baseline.daysObserved,
+    eventsToday: todaysEvents.length,
+    ...(decision.send && severity !== null && narration.text !== ''
+      ? {
+          notification: {
+            text: narration.text,
+            source: narration.source,
+            severity,
+            delivered: delivery.delivered,
+          },
+        }
+      : {}),
+  });
 
   // Structured so it can be queried in CloudWatch Logs Insights, and so the
   // reasoning is recoverable after the fact. Findings carry their own explanation
@@ -202,7 +232,9 @@ export async function handler(event: ScheduledEvent = {}): Promise<AssessmentSum
     severity,
     suppressed: assessment.suppressed,
     message: narration.text,
-    narrationSource: found.length === 0 ? 'none' : narration.source,
+    notified: decision.send && narration.text !== '',
+    notifyDecision: decision.reason,
+    narrationSource: narration.text === '' ? 'none' : narration.source,
     ...(narration.rejection === undefined ? {} : { narrationRejection: narration.rejection }),
     reasons: [...found].sort((a, b) => b.minutesOverdue - a.minutesOverdue).map((f) => f.reason),
   };

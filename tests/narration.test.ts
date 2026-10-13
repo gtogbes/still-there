@@ -165,12 +165,12 @@ describe('the prompt', () => {
       findings,
       severity: 'medium',
       localTime: '11:24',
-      residentName: 'Ese',
+      residentName: 'Jasmine',
     });
     expect(prompt).toContain('activity in the kitchen');
     expect(prompt).toContain('144 minutes overdue');
     expect(prompt).toContain('30 of the last 30');
-    expect(prompt).toContain('Ese');
+    expect(prompt).toContain('Jasmine');
   });
 
   it('orders findings most overdue first', () => {

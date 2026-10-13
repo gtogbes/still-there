@@ -5,7 +5,7 @@
  *
  * The history matters because the product compares today against weeks of learned
  * habit, and there is no way to wait six weeks to find out whether the deployed
- * assessment works. This writes Ese's routine — the same persona the offline test
+ * assessment works. This writes Jasmine's routine — the same persona the offline test
  * suite uses — straight into the events table, so the Lambda reasons over real
  * stored rows rather than a fixture.
  *
@@ -26,7 +26,7 @@ import {
   PutCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { ese } from '../src/testing/personas.ts';
+import { jasmine } from '../src/testing/personas.ts';
 import { generateHistory } from '../src/testing/generator.ts';
 import { addDays, fromLocal, localParts } from '../src/domain/time.ts';
 
@@ -57,12 +57,12 @@ const config = {
   householdId,
   // Optional in the data model, and worth setting: without it the notification says
   // "the resident", which reads like a case file rather than somebody's mother.
-  residentName: ese.name,
-  timeZone: ese.config.timeZone,
-  interiorZones: ese.config.interiorZones,
-  occupancySubjects: ese.config.occupancySubjects,
-  quietFromMinute: ese.config.quietFromMinute,
-  quietToMinute: ese.config.quietToMinute,
+  residentName: jasmine.name,
+  timeZone: jasmine.config.timeZone,
+  interiorZones: jasmine.config.interiorZones,
+  occupancySubjects: jasmine.config.occupancySubjects,
+  quietFromMinute: jasmine.config.quietFromMinute,
+  quietToMinute: jasmine.config.quietToMinute,
   suppressions: [],
   updatedAt: Date.now(),
 };
@@ -79,7 +79,7 @@ console.log(`  occupancy accepts: ${config.occupancySubjects.join(', ')}`);
 // ── Device mappings and health ───────────────────────────────────────────────
 
 const now = Date.now();
-for (const device of ese.devices) {
+for (const device of jasmine.devices) {
   await doc.send(
     new PutCommand({
       TableName: STATE_TABLE,
@@ -109,7 +109,7 @@ for (const device of ese.devices) {
     }),
   );
 }
-console.log(`${ese.devices.length} devices mapped and marked online`);
+console.log(`${jasmine.devices.length} devices mapped and marked online`);
 
 if (configOnly || historyDays === 0) {
   console.log('\nconfig only, no history written\n');
@@ -122,14 +122,14 @@ const today = localParts(now, config.timeZone).dateKey;
 const startDateKey = addDays(today, -historyDays);
 
 // Learning window: the days before today, all normal.
-const history = generateHistory(ese, {
+const history = generateHistory(jasmine, {
   startDateKey,
   days: historyDays,
   seed: 20260925,
 });
 
 // Today, separately, so it can be deliberately broken.
-const todayEvents = generateHistory(ese, {
+const todayEvents = generateHistory(jasmine, {
   startDateKey: today,
   days: 1,
   seed: 999,

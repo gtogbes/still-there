@@ -38,7 +38,7 @@ export interface Persona {
 }
 
 /**
- * Ese, 82. Regular as clockwork: up before eight, out for the paper, three
+ * Jasmine, 82. Regular as clockwork: up before eight, out for the paper, three
  * meals in the kitchen, shops on Tuesdays and Fridays, laundry upstairs twice a
  * week.
  *
@@ -48,10 +48,10 @@ export interface Persona {
  * product would be uninstalled inside a month. The shopping trip shares the
  * front-door anchor with the morning paper, so it needs no special handling.
  */
-export const ese: Persona = {
-  name: 'Ese',
+export const jasmine: Persona = {
+  name: 'Jasmine',
   config: {
-    householdId: 'household-ese',
+    householdId: 'household-jasmine',
     timeZone: 'Europe/London',
     interiorZones: ['hallway', 'kitchen', 'landing'],
     occupancySubjects: DEFAULT_OCCUPANCY_SUBJECTS,
@@ -93,7 +93,7 @@ export const ese: Persona = {
   noise: [
     // The street. Deliveries, passers-by, traffic. Ring classifies these
     // accurately enough, but none of it happens indoors, so none of it is
-    // evidence Ese is awake.
+    // evidence Jasmine is awake.
     { zone: 'front_door', kind: 'motion', subject: 'human', perDay: 14, fromMinute: 6 * 60, toMinute: 22 * 60 },
     { zone: 'front_door', kind: 'motion', subject: 'vehicle', perDay: 6, fromMinute: 7 * 60, toMinute: 20 * 60 },
     { zone: 'front_door', kind: 'doorbell', perDay: 1, fromMinute: 9 * 60, toMinute: 17 * 60 },

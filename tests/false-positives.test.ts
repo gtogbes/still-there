@@ -3,7 +3,7 @@ import { learnBaseline } from '../src/domain/baseline.js';
 import { assess, deviations } from '../src/domain/deviation.js';
 import { addDays, fromLocal } from '../src/domain/time.js';
 import { eventsOnDate, generateHistory, healthySnapshot } from '../src/testing/generator.js';
-import { nosa, ese } from '../src/testing/personas.js';
+import { nosa, jasmine } from '../src/testing/personas.js';
 import type { Persona } from '../src/testing/personas.js';
 
 /**
@@ -103,7 +103,7 @@ const NOSA_SEEDS: readonly { readonly learn: number; readonly trial: number }[] 
 
 /**
  * Measured on 2026-09-10 with three seeds each, 60 trial days, four check-ins a
- * day: Ese 0.00 per 30 days on every seed; Nosa 1.00, 1.00 and 1.50.
+ * day: Jasmine 0.00 per 30 days on every seed; Nosa 1.00, 1.00 and 1.50.
  *
  * Nosa's budget is deliberately non-zero. He keeps no real schedule, so a handful
  * of his days genuinely look like nothing happened, and pretending otherwise
@@ -116,11 +116,11 @@ describe('false-positive budget', () => {
   it.each(SEEDS)(
     'never bothers a regular household without cause (seeds $learn/$trial)',
     ({ learn, trial }) => {
-      const measured = measureFalsePositives(ese, learn, trial);
+      const measured = measureFalsePositives(jasmine, learn, trial);
       expect(measured.totalCheckIns).toBe(TRIAL_DAYS * CHECK_IN_MINUTES.length);
       expect(
         measured.daysWithAlert,
-        `Ese: ${measured.daysWithAlert} of ${measured.trialDays} ordinary days produced an alert`,
+        `Jasmine: ${measured.daysWithAlert} of ${measured.trialDays} ordinary days produced an alert`,
       ).toBe(0);
     },
   );

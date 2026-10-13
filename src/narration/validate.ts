@@ -53,6 +53,20 @@ export interface ValidationResult {
   readonly rejection?: string;
 }
 
+/**
+ * The speculation and imagery checks on their own, for model text that is not a
+ * notification — the assistant's occasional free-text reply, for instance. Same
+ * rule, same word lists, so there is one definition of "unsafe" in the codebase.
+ */
+export function unsafeClaim(text: string): string | undefined {
+  const lower = text.toLowerCase();
+  const word = FORBIDDEN.find((w) => lower.includes(w));
+  if (word !== undefined) return `speculative language: '${word}'`;
+  const phrase = IMPLIES_IMAGERY.find((p) => lower.includes(p));
+  if (phrase !== undefined) return `implies imagery was viewed: '${phrase}'`;
+  return undefined;
+}
+
 export function validateNarration(
   narration: string,
   findings: readonly Finding[],

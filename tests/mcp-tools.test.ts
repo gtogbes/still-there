@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSuppression,
+  endSuppressions,
   describeRoutine,
   describeSuppression,
   explainAssessment,
@@ -8,7 +9,7 @@ import {
 } from '../src/mcp/tools.js';
 import { addDays, fromLocal, localParts } from '../src/domain/time.js';
 import { eventsOnDate, generateHistory, healthySnapshot, blindSnapshot } from '../src/testing/generator.js';
-import { ese } from '../src/testing/personas.js';
+import { jasmine } from '../src/testing/personas.js';
 import type { StoredHousehold } from '../src/storage/household.js';
 import type { Assessment } from '../src/domain/types.js';
 
@@ -22,23 +23,23 @@ import type { Assessment } from '../src/domain/types.js';
  * system could produce.
  */
 
-const TZ = ese.config.timeZone;
+const TZ = jasmine.config.timeZone;
 const HISTORY_START = '2026-08-01';
 const DAYS = 42;
 const TODAY = addDays(HISTORY_START, DAYS);
 
 const household: StoredHousehold = {
-  ...ese.config,
-  residentName: 'Ese',
+  ...jasmine.config,
+  residentName: 'Jasmine',
   suppressions: [],
   updatedAt: 0,
 };
 
-const history = generateHistory(ese, { startDateKey: HISTORY_START, days: DAYS, seed: 5 });
+const history = generateHistory(jasmine, { startDateKey: HISTORY_START, days: DAYS, seed: 5 });
 
 function dayEvents(seed: number, broken: boolean) {
   return eventsOnDate(
-    generateHistory(ese, {
+    generateHistory(jasmine, {
       startDateKey: TODAY,
       days: 1,
       seed,
@@ -57,7 +58,7 @@ describe('still_there_status', () => {
       household,
       historyEvents: history,
       todaysEvents: dayEvents(11, false),
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
     expect(text.toLowerCase()).toContain('normal day');
@@ -68,10 +69,10 @@ describe('still_there_status', () => {
       household,
       historyEvents: history,
       todaysEvents: dayEvents(12, true),
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
-    expect(text).toContain('Ese');
+    expect(text).toContain('Jasmine');
     expect(text).toMatch(/\d{1,2}:\d{2}/);
     expect(text).toMatch(/held on \d+ of the last \d+/);
   });
@@ -81,7 +82,7 @@ describe('still_there_status', () => {
       household,
       historyEvents: history,
       todaysEvents: dayEvents(13, true),
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
     const lower = text.toLowerCase();
@@ -98,7 +99,7 @@ describe('still_there_status', () => {
       household,
       historyEvents: history,
       todaysEvents: dayEvents(14, true),
-      health: blindSnapshot(ese, noon, 'stale'),
+      health: blindSnapshot(jasmine, noon, 'stale'),
       evaluatedAt: noon,
     });
     expect(text).toContain("can't actually tell you");
@@ -108,9 +109,9 @@ describe('still_there_status', () => {
   it('admits when it has not learned the routine yet', () => {
     const { text } = householdStatus({
       household,
-      historyEvents: generateHistory(ese, { startDateKey: HISTORY_START, days: 3, seed: 9 }),
+      historyEvents: generateHistory(jasmine, { startDateKey: HISTORY_START, days: 3, seed: 9 }),
       todaysEvents: dayEvents(15, true),
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
     expect(text.toLowerCase()).toContain("don't know");
@@ -125,7 +126,7 @@ describe('still_there_status', () => {
       household: paused,
       historyEvents: history,
       todaysEvents: dayEvents(16, true),
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
     expect(text).toContain('away in Lagos');
@@ -138,11 +139,12 @@ describe('explain_last_alert', () => {
       household,
       historyEvents: history,
       todaysEvents: dayEvents(21, true),
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
 
-    const text = explainAssessment(assessment, TZ);
+    const stored = { ...assessment, anchorCount: 4, historyDays: 42, eventsToday: 0 };
+    const { text } = explainAssessment(stored, TZ);
     expect(text).toMatch(/\d{1,2}:\d{2}/);
     expect(text).toContain('overdue');
     // The justification for keeping an audit trail at all: the answer explains the
@@ -151,7 +153,7 @@ describe('explain_last_alert', () => {
   });
 
   it('is honest when nothing was sent', () => {
-    expect(explainAssessment(undefined, TZ)).toContain("haven't sent you anything");
+    expect(explainAssessment(undefined, TZ).text).toContain("haven't sent you anything");
   });
 
   it('is honest when the last look found nothing', () => {
@@ -163,14 +165,14 @@ describe('explain_last_alert', () => {
       findings: [],
       suppressed: false,
     };
-    expect(explainAssessment(quiet, TZ)).toContain("didn't contact you");
+    expect(explainAssessment({ ...quiet, anchorCount: 4, historyDays: 42, eventsToday: 0 }, TZ).text).toContain("didn't contact you");
   });
 });
 
 describe('describe_routine', () => {
   it('lists the learned habits in order, and says they were learned', () => {
-    const text = describeRoutine(household, history);
-    expect(text).toContain('Ese');
+    const { text } = describeRoutine(household, history);
+    expect(text).toContain('Jasmine');
     expect(text).toContain('learned from');
     // The reliability rule is the product's main defence against alert fatigue, so
     // it is worth a family hearing it rather than having to trust a black box.
@@ -178,9 +180,9 @@ describe('describe_routine', () => {
   });
 
   it('admits to not knowing yet rather than inventing a routine', () => {
-    const text = describeRoutine(
+    const { text } = describeRoutine(
       household,
-      generateHistory(ese, { startDateKey: HISTORY_START, days: 2, seed: 3 }),
+      generateHistory(jasmine, { startDateKey: HISTORY_START, days: 2, seed: 3 }),
     );
     expect(text).toContain("haven't learned");
   });
@@ -205,11 +207,153 @@ describe('pause_monitoring', () => {
   });
 
   it('confirms what it did, and that history is still being kept', () => {
-    const text = describeSuppression(buildSuppression(noon, 7, 'in hospital'), TZ);
+    const { text } = describeSuppression(buildSuppression(noon, 7, 'in hospital'), TZ);
     expect(text).toContain('in hospital');
     expect(text).toContain(localParts(noon + 7 * 86_400_000, TZ).dateKey);
     // Important reassurance: pausing must not sound like it discards the routine,
     // or nobody will use it and the system will cry wolf through every holiday.
     expect(text).toContain("routine won't be forgotten");
+  });
+});
+
+describe('structured content for screens', () => {
+  it('describes each habit today with its state', () => {
+    const { data } = householdStatus({
+      household,
+      historyEvents: history,
+      todaysEvents: dayEvents(31, true),
+      health: healthySnapshot(jasmine, noon),
+      evaluatedAt: noon,
+    });
+    expect(data.kind).toBe('status');
+    expect(data.state).toBe('overdue');
+    expect(data.habits.length).toBeGreaterThan(0);
+    expect(data.habits.every((h) => h.state === 'overdue')).toBe(true);
+    expect(data.habits.map((h) => h.name)).toContain('Up and about');
+    // Ordered by usual time, so a timeline can draw them left to right.
+    const usual = data.habits.map((h) => h.usualMinute);
+    expect([...usual].sort((a, b) => a - b)).toEqual(usual);
+  });
+
+  it('marks habits done, with the time they happened, on a normal day', () => {
+    const { data } = householdStatus({
+      household,
+      historyEvents: history,
+      todaysEvents: dayEvents(32, false),
+      health: healthySnapshot(jasmine, noon),
+      evaluatedAt: noon,
+    });
+    expect(data.state).toBe('normal');
+    for (const habit of data.habits) {
+      expect(habit.state).toBe('done');
+      expect(habit.happenedAtMinute).not.toBeNull();
+    }
+    expect(data.activityMinutes.length).toBeGreaterThan(0);
+  });
+
+  it('counts the movement it deliberately ignored', () => {
+    // The cat and the street. Shown on screen so the family can see the system
+    // noticed them and chose not to count them, rather than wondering.
+    const { data } = householdStatus({
+      household,
+      historyEvents: history,
+      todaysEvents: dayEvents(33, true),
+      health: healthySnapshot(jasmine, noon),
+      evaluatedAt: noon,
+    });
+    expect(data.ignored.notAPerson).toBeGreaterThan(0);
+    expect(data.ignored.outside).toBeGreaterThan(0);
+    expect(data.activityMinutes).toHaveLength(0);
+  });
+
+  it('carries no device identifiers anywhere', () => {
+    const { data } = householdStatus({
+      household,
+      historyEvents: history,
+      todaysEvents: dayEvents(34, true),
+      health: healthySnapshot(jasmine, noon),
+      evaluatedAt: noon,
+    });
+    expect(JSON.stringify(data)).not.toMatch(/dev-/);
+  });
+
+  it('shows night-time rather than an alarm before the day starts', () => {
+    const night = fromLocal(TODAY, 3 * 60, TZ);
+    const { data } = householdStatus({
+      household,
+      historyEvents: history,
+      todaysEvents: [],
+      health: healthySnapshot(jasmine, night),
+      evaluatedAt: night,
+    });
+    expect(data.state).toBe('night');
+  });
+
+  it('reports the paused state with the end date', () => {
+    const paused: StoredHousehold = {
+      ...household,
+      suppressions: [buildSuppression(noon - 3_600_000, 5, 'visiting family')],
+    };
+    const { data } = householdStatus({
+      household: paused,
+      historyEvents: history,
+      todaysEvents: dayEvents(35, true),
+      health: healthySnapshot(jasmine, noon),
+      evaluatedAt: noon,
+    });
+    expect(data.state).toBe('paused');
+    expect(data.pauseReason).toBe('visiting family');
+    expect(data.pausedUntil).not.toBeNull();
+  });
+
+  it('returns the exact message that was sent when explaining', () => {
+    const { assessment } = householdStatus({
+      household,
+      historyEvents: history,
+      todaysEvents: dayEvents(36, true),
+      health: healthySnapshot(jasmine, noon),
+      evaluatedAt: noon,
+    });
+    const message = 'No sign of Jasmine being up yet today — usually by 07:31.';
+    const { data } = explainAssessment(
+      {
+        ...assessment,
+        anchorCount: 4,
+        historyDays: 42,
+        eventsToday: 0,
+        notification: { text: message, source: 'model', severity: 'high', delivered: true },
+      },
+      TZ,
+    );
+    expect(data.found).toBe(true);
+    expect(data.message).toBe(message);
+    expect(data.phrasedBy).toBe('bedrock');
+    expect(data.findings.length).toBeGreaterThan(0);
+  });
+
+  it('describes the routine as data for both kinds of day', () => {
+    const { data } = describeRoutine(household, history);
+    expect(data.weekday.length).toBeGreaterThan(0);
+    expect(data.weekend.length).toBeGreaterThan(0);
+    for (const habit of data.weekday) {
+      expect(habit.reliability).toBeGreaterThanOrEqual(0.95);
+      expect(habit.latestNormalMinute).toBeGreaterThanOrEqual(habit.usualMinute);
+    }
+  });
+});
+
+describe('resume_monitoring', () => {
+  it('ends an active pause but keeps a future one', () => {
+    const active = buildSuppression(noon - 3_600_000, 5, 'visiting family');
+    const future = buildSuppression(noon + 30 * 86_400_000, 7, 'holiday');
+    const { remaining, answer } = endSuppressions([active, future], noon);
+    expect(answer.data.wasPaused).toBe(true);
+    expect(remaining).toEqual([future]);
+  });
+
+  it('says so when there was nothing to resume', () => {
+    const { answer } = endSuppressions([], noon);
+    expect(answer.data.wasPaused).toBe(false);
+    expect(answer.text).toContain("wasn't paused");
   });
 });

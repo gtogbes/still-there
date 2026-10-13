@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { anchorsFor, learnBaseline } from '../src/domain/baseline.js';
 import { generateHistory } from '../src/testing/generator.js';
-import { nosa, ese } from '../src/testing/personas.js';
+import { nosa, jasmine } from '../src/testing/personas.js';
 
 const START = '2026-06-01';
 const DAYS = 42;
 
-function eseBaseline() {
-  const history = generateHistory(ese, { startDateKey: START, days: DAYS, seed: 1 });
-  return learnBaseline(history, ese.config);
+function jasmineBaseline() {
+  const history = generateHistory(jasmine, { startDateKey: START, days: DAYS, seed: 1 });
+  return learnBaseline(history, jasmine.config);
 }
 
 describe('learning a routine', () => {
   it('finds the habits a regular household actually keeps', () => {
-    const baseline = eseBaseline();
+    const baseline = jasmineBaseline();
     const keys = anchorsFor(baseline, 'weekday').map((anchor) => anchor.key);
     expect(keys).toContain('first_activity');
     expect(keys).toContain('activity:hallway:motion');
@@ -22,19 +22,19 @@ describe('learning a routine', () => {
   });
 
   it('rejects a twice-weekly habit rather than alerting on it three times a week', () => {
-    // Ese does laundry upstairs on Tuesdays and Fridays. That is 40% of
+    // Jasmine does laundry upstairs on Tuesdays and Fridays. That is 40% of
     // working days. Accepting it as an anchor would generate an unnecessary nudge
     // every Monday, Wednesday and Thursday — the exact behaviour that trains
     // families to ignore the alerts that matter.
-    const baseline = eseBaseline();
+    const baseline = jasmineBaseline();
     const keys = baseline.anchors.map((anchor) => anchor.key);
     expect(keys).not.toContain('activity:landing:motion');
   });
 
   it('ignores the street', () => {
     // Fourteen passers-by a day, six vehicles, a parcel. None of it is evidence
-    // that Ese is up, so none of it may become an anchor.
-    const baseline = eseBaseline();
+    // that Jasmine is up, so none of it may become an anchor.
+    const baseline = jasmineBaseline();
     const keys = baseline.anchors.map((anchor) => anchor.key);
     expect(keys).not.toContain('activity:front_door:motion');
     expect(keys).not.toContain('activity:front_door:vehicle');
@@ -42,7 +42,7 @@ describe('learning a routine', () => {
   });
 
   it('learns weekdays and weekends separately', () => {
-    const baseline = eseBaseline();
+    const baseline = jasmineBaseline();
     expect(anchorsFor(baseline, 'weekday').length).toBeGreaterThan(0);
     expect(anchorsFor(baseline, 'weekend').length).toBeGreaterThan(0);
   });
@@ -51,7 +51,7 @@ describe('learning a routine', () => {
     // The night filter matters: without it a single trip to the bathroom becomes
     // "first activity" and drags the morning anchor back by hours, after which
     // the system never notices a missed morning again.
-    const baseline = eseBaseline();
+    const baseline = jasmineBaseline();
     const first = anchorsFor(baseline, 'weekday').find((a) => a.key === 'first_activity');
     expect(first).toBeDefined();
     expect(first?.medianMinute).toBeGreaterThan(7 * 60);
@@ -62,7 +62,7 @@ describe('learning a routine', () => {
     // Nosa keeps no real schedule. Whatever anchors survive must carry a much
     // larger spread, so the system is correspondingly slower to worry. Claiming
     // precision about someone this variable would be dishonest.
-    const regular = eseBaseline();
+    const regular = jasmineBaseline();
     const irregular = learnBaseline(
       generateHistory(nosa, { startDateKey: START, days: DAYS, seed: 7 }),
       nosa.config,
@@ -76,8 +76,8 @@ describe('learning a routine', () => {
   });
 
   it('refuses to learn anything from too short a window', () => {
-    const history = generateHistory(ese, { startDateKey: START, days: 4, seed: 3 });
-    const baseline = learnBaseline(history, ese.config);
+    const history = generateHistory(jasmine, { startDateKey: START, days: 4, seed: 3 });
+    const baseline = learnBaseline(history, jasmine.config);
     expect(baseline.anchors).toHaveLength(0);
   });
 });

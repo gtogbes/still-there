@@ -3,20 +3,20 @@ import { learnBaseline } from '../src/domain/baseline.js';
 import { assess, blindSpots, deviations, peakSeverity } from '../src/domain/deviation.js';
 import { fromLocal } from '../src/domain/time.js';
 import { blindSnapshot, eventsOnDate, generateHistory, healthySnapshot } from '../src/testing/generator.js';
-import { ese } from '../src/testing/personas.js';
+import { jasmine } from '../src/testing/personas.js';
 
 const START = '2026-06-01';
 const LEARNING_DAYS = 42;
 const TEST_DAY = '2026-07-13';
-const TZ = ese.config.timeZone;
+const TZ = jasmine.config.timeZone;
 
 const baseline = learnBaseline(
-  generateHistory(ese, { startDateKey: START, days: LEARNING_DAYS, seed: 1 }),
-  ese.config,
+  generateHistory(jasmine, { startDateKey: START, days: LEARNING_DAYS, seed: 1 }),
+  jasmine.config,
 );
 
 function dayEvents(options: { seed: number; omit?: Parameters<typeof generateHistory>[1]['omit'] }) {
-  const generated = generateHistory(ese, {
+  const generated = generateHistory(jasmine, {
     startDateKey: TEST_DAY,
     days: 1,
     seed: options.seed,
@@ -33,9 +33,9 @@ describe('a normal day', () => {
     // product; anything else is noise the family will eventually mute.
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: dayEvents({ seed: 101 }),
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
     expect(assessment.findings).toHaveLength(0);
@@ -46,9 +46,9 @@ describe('a normal day', () => {
     const early = fromLocal(TEST_DAY, 7 * 60, TZ);
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: dayEvents({ seed: 102, omit: () => true }),
-      health: healthySnapshot(ese, early),
+      health: healthySnapshot(jasmine, early),
       evaluatedAt: early,
     });
     // Nothing has happened yet, but nothing was expected yet either.
@@ -69,9 +69,9 @@ describe('a day where the routine does not happen', () => {
   it('notices, and says which habit was missed', () => {
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: events,
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
 
@@ -86,9 +86,9 @@ describe('a day where the routine does not happen', () => {
       const at = fromLocal(TEST_DAY, minute, TZ);
       const assessment = assess({
         baseline,
-        config: ese.config,
+        config: jasmine.config,
         todaysEvents: events,
-        health: healthySnapshot(ese, at),
+        health: healthySnapshot(jasmine, at),
         evaluatedAt: at,
       });
       const first = deviations(assessment).find((f) => f.anchorKey === 'first_activity');
@@ -106,9 +106,9 @@ describe('telling a blind spot apart from a welfare problem', () => {
     // that the cameras were not watching, and that must change the answer.
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: events,
-      health: blindSnapshot(ese, noon, 'offline'),
+      health: blindSnapshot(jasmine, noon, 'offline'),
       evaluatedAt: noon,
     });
 
@@ -122,9 +122,9 @@ describe('telling a blind spot apart from a welfare problem', () => {
     // heard from since breakfast.
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: events,
-      health: blindSnapshot(ese, noon, 'stale'),
+      health: blindSnapshot(jasmine, noon, 'stale'),
       evaluatedAt: noon,
     });
     expect(deviations(assessment)).toHaveLength(0);
@@ -134,9 +134,9 @@ describe('telling a blind spot apart from a welfare problem', () => {
   it('mentions a flat battery when that is the cause', () => {
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: events,
-      health: blindSnapshot(ese, noon, 'flat_battery'),
+      health: blindSnapshot(jasmine, noon, 'flat_battery'),
       evaluatedAt: noon,
     });
     expect(blindSpots(assessment).some((f) => f.reason.includes('flat battery'))).toBe(true);
@@ -149,9 +149,9 @@ describe('telling a blind spot apart from a welfare problem', () => {
     });
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: partial,
-      health: blindSnapshot(ese, noon, 'stale', ['kitchen']),
+      health: blindSnapshot(jasmine, noon, 'stale', ['kitchen']),
       evaluatedAt: noon,
     });
 
@@ -167,9 +167,9 @@ describe('when not to speak', () => {
     const at = fromLocal(TEST_DAY, 3 * 60, TZ);
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: dayEvents({ seed: 401, omit: () => true }),
-      health: healthySnapshot(ese, at),
+      health: healthySnapshot(jasmine, at),
       evaluatedAt: at,
     });
     expect(assessment.suppressed).toBe(true);
@@ -179,9 +179,9 @@ describe('when not to speak', () => {
   it('honours an away window instead of crying wolf for a fortnight', () => {
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: dayEvents({ seed: 402, omit: () => true }),
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
       suppressions: [
         { from: noon - 86_400_000, to: noon + 86_400_000, reason: 'away visiting family' },
@@ -212,9 +212,9 @@ describe('the cat problem', () => {
   it('still reports the missed routine despite the movement indoors', () => {
     const assessment = assess({
       baseline,
-      config: ese.config,
+      config: jasmine.config,
       todaysEvents: events,
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
     expect(deviations(assessment).map((f) => f.anchorKey)).toContain('first_activity');
@@ -227,9 +227,9 @@ describe('the cat problem', () => {
     // morning nobody got up.
     const permissive = assess({
       baseline,
-      config: { ...ese.config, occupancySubjects: ['human', 'unspecified', 'other'] },
+      config: { ...jasmine.config, occupancySubjects: ['human', 'unspecified', 'other'] },
       todaysEvents: events,
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
     const keys = deviations(permissive).map((f) => f.anchorKey);
@@ -246,9 +246,9 @@ describe('the cat problem', () => {
     // which hardware to add first.
     const permissive = assess({
       baseline,
-      config: { ...ese.config, occupancySubjects: ['human', 'unspecified', 'other'] },
+      config: { ...jasmine.config, occupancySubjects: ['human', 'unspecified', 'other'] },
       todaysEvents: events,
-      health: healthySnapshot(ese, noon),
+      health: healthySnapshot(jasmine, noon),
       evaluatedAt: noon,
     });
     expect(deviations(permissive).map((f) => f.anchorKey)).toContain(

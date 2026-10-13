@@ -11,7 +11,7 @@ A Ring doorbell already records the shape of someone's day — door opened at 08
 motion in the hallway, movement in the kitchen. Normally those events exist to tell
 you a stranger is outside. StillThere uses them backwards.
 
-It spends a couple of weeks learning that Ese, 82, is up before eight, out for the
+It spends a couple of weeks learning that Jasmine, 82, is up before eight, out for the
 paper by ten past, and in the kitchen by half past. Then one Tuesday none of that
 happens, and her daughter gets a message at work: *no sign of activity yet today,
 usually by 08:21, it's now 11:30.* Not an alarm. A nudge, with its reasoning attached.
@@ -156,7 +156,7 @@ times a day, and counts how often the family gets bothered for no reason.
 
 | Household | Unnecessary alerts per 30 days | Anchors learned |
 |---|---|---|
-| Ese (regular routine, and a cat) | **0.00** across 3 seeds | 8 |
+| Jasmine (regular routine, and a cat) | **0.00** across 3 seeds | 8 |
 | Nosa (no real schedule) | **1.00, 1.00, 1.50** across 3 seeds | 4 |
 
 Nosa's budget is deliberately non-zero, and he is the honest half of the test. His
@@ -202,7 +202,7 @@ The model never decides *whether* to alert, and never sees an image.
 
 Four verified findings become:
 
-> No sign of Ese being up yet today — usually by 08:28, and it's now 12:26. The
+> No sign of Jasmine being up yet today — usually by 08:28, and it's now 12:26. The
 > hallway, front door, and kitchen are also quiet.
 
 And when Bedrock is unavailable, denied, or says something unacceptable, this goes
@@ -226,7 +226,7 @@ npm run check     # typecheck + tests
 ```
 
 **Start with `npm run demo`.** It needs no AWS account, no Ring account and no
-credentials. It learns Ese's routine from 42 days of history, shows an ordinary day
+credentials. It learns Jasmine's routine from 42 days of history, shows an ordinary day
 producing silence, then walks a bad day from 08:00 (nothing overdue yet) through to
 12:26, and finishes on the two things that were easy to get wrong — the cat, and a
 camera that had stopped watching.
@@ -305,7 +305,7 @@ src/handlers/     Lambda entry points
   assess.ts       the scheduled assessment
   home.ts         public landing page. No data access at all.
 src/testing/      synthetic household harness
-  personas.ts     Ese (regular) and Nosa (irregular, with a cat)
+  personas.ts     Jasmine (regular) and Nosa (irregular, with a cat)
   generator.ts    event streams, device health snapshots
   rng.ts          seeded PRNG, so measurements are comparable across runs
 scripts/          operator tools

@@ -1,6 +1,8 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { buildMcpServer } from '../mcp/server.js';
+import { clockFor, DEMO_MINUTE_HEADER, headerValue, parseDemoMinute } from '../mcp/demo-clock.js';
 import { tableNames } from '../storage/tables.js';
+import { checkAccess } from './access.js';
 
 /**
  * MCP endpoint, Streamable HTTP.
@@ -75,10 +77,29 @@ export async function handler(event: LambdaEvent): Promise<LambdaResponse> {
     };
   }
 
+  // Access first, before any work. Unauthenticated requests get a 401 and never
+  // reach DynamoDB, and pause_monitoring cannot be called by a stranger.
+  const access = await checkAccess(event.headers);
+  if (!access.allowed) {
+    return {
+      statusCode: 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'WWW-Authenticate': 'Bearer realm="still-there"',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'unauthorised: present the access code as a Bearer token' },
+        id: null,
+      }),
+    };
+  }
+
+  const demoMinute = parseDemoMinute(headerValue(event.headers, DEMO_MINUTE_HEADER));
   const server = buildMcpServer({
     tables: tableNames(process.env),
     householdId,
-    now: () => Date.now(),
+    now: clockFor(demoMinute, process.env['DEMO_CLOCK'] === 'enabled'),
   });
 
   const transport = new WebStandardStreamableHTTPServerTransport({
