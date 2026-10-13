@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { eventsBetween } from '../storage/events.js';
 import { getHousehold, putHousehold, type StoredHousehold } from '../storage/household.js';
-import { lastNotificationBefore } from '../storage/assessments.js';
+import { assessmentsBetween, lastNotificationBefore } from '../storage/assessments.js';
 import { deviceHealthFor } from '../storage/state.js';
 import type { TableNames } from '../storage/tables.js';
 import {
@@ -13,6 +13,7 @@ import {
   endSuppressions,
   explainAssessment,
   householdStatus,
+  sentMessages,
   type ToolAnswer,
 } from './tools.js';
 
@@ -115,12 +116,15 @@ export function buildMcpServer(deps: ServerDeps): McpServer {
       const household = await load();
       if (household === undefined) return NO_HOUSEHOLD;
 
-      const last = await lastNotificationBefore(
-        deps.tables,
-        deps.householdId,
-        deps.now(household.timeZone),
+      const now = deps.now(household.timeZone);
+      const { dayStart } = baselineWindow(now, household.timeZone);
+      const [last, today] = await Promise.all([
+        lastNotificationBefore(deps.tables, deps.householdId, now),
+        assessmentsBetween(deps.tables, deps.householdId, dayStart, now),
+      ]);
+      return result(
+        explainAssessment(last, household.timeZone, sentMessages(today, household.timeZone)),
       );
-      return result(explainAssessment(last, household.timeZone));
     },
   );
 

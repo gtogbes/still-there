@@ -32,12 +32,39 @@ resource "aws_apigatewayv2_stage" "main" {
   name        = "$default"
   auto_deploy = true
 
+  # Route settings reference route keys, which must exist first.
+  depends_on = [aws_apigatewayv2_route.handler]
+
   default_route_settings {
     # Ring's traffic is a handful of events a minute from one household. Anything
     # beyond this is either a misconfiguration or somebody poking the endpoint, and
     # in both cases we would rather shed it than pay for it.
     throttling_burst_limit = 20
     throttling_rate_limit  = 10
+  }
+
+  # The assistant is the only route that calls Bedrock on every request, so it gets
+  # the tightest limit. One question a second is generous for a person talking; it
+  # is not generous for a script trying to run up a bill. The access code is the
+  # first line of defence and this is the second.
+  route_settings {
+    route_key              = local.routes.assistant.key
+    throttling_burst_limit = 4
+    throttling_rate_limit  = 1
+  }
+
+  # The web app polls the MCP server as the demo clock moves. No Bedrock involved,
+  # but still bounded.
+  route_settings {
+    route_key              = local.routes.mcp_web.key
+    throttling_burst_limit = 10
+    throttling_rate_limit  = 5
+  }
+
+  route_settings {
+    route_key              = local.routes.mcp.key
+    throttling_burst_limit = 10
+    throttling_rate_limit  = 5
   }
 
   access_log_settings {
@@ -61,22 +88,28 @@ resource "aws_cloudwatch_log_group" "api" {
 }
 
 locals {
+  # Route → handler. More than one route can share a handler: /mcp is for MCP
+  # clients calling the API directly, /api/mcp is the same server reached through
+  # CloudFront by the web app, on the same origin as the page.
   routes = {
-    webhook = "POST /ring/webhook"
-    token   = "POST /ring/token"
-    link    = "GET /ring/link"
-    home    = "GET /"
-    mcp     = "POST /mcp"
+    webhook   = { key = "POST /ring/webhook", handler = "webhook" }
+    token     = { key = "POST /ring/token", handler = "token" }
+    link      = { key = "GET /ring/link", handler = "link" }
+    home      = { key = "GET /", handler = "home" }
+    mcp       = { key = "POST /mcp", handler = "mcp" }
+    mcp_web   = { key = "POST /api/mcp", handler = "mcp" }
+    assistant = { key = "POST /api/assistant", handler = "assistant" }
   }
+
+  # Only handlers that are actually reached over HTTP get an integration and an
+  # invoke permission. The assessment is schedule-driven and has no route; giving
+  # it a grant would be dead surface that quietly goes live if a catch-all route is
+  # ever added.
+  http_handlers = toset([for r in local.routes : r.handler])
 }
 
-# Keyed on routes rather than handlers, deliberately. Not every function is reached
-# over HTTP — the assessment is schedule-driven and has no route — and keying this on
-# the handler list gave it an integration and an invoke permission it had no use for.
-# Dead surface area, and a grant that would quietly become live if anyone later added
-# a catch-all route.
 resource "aws_apigatewayv2_integration" "handler" {
-  for_each = local.routes
+  for_each = local.http_handlers
 
   api_id                 = aws_apigatewayv2_api.main.id
   integration_type       = "AWS_PROXY"
@@ -85,19 +118,19 @@ resource "aws_apigatewayv2_integration" "handler" {
 
   # Shorter than the function timeout so the gateway is never the thing that gives
   # up first — a gateway timeout tells us nothing about what the handler was doing.
-  timeout_milliseconds = local.handlers[each.key].timeout * 1000 - 500
+  timeout_milliseconds = min(local.handlers[each.key].timeout * 1000 - 500, 29000)
 }
 
 resource "aws_apigatewayv2_route" "handler" {
   for_each = local.routes
 
   api_id    = aws_apigatewayv2_api.main.id
-  route_key = each.value
-  target    = "integrations/${aws_apigatewayv2_integration.handler[each.key].id}"
+  route_key = each.value.key
+  target    = "integrations/${aws_apigatewayv2_integration.handler[each.value.handler].id}"
 }
 
 resource "aws_lambda_permission" "api" {
-  for_each = local.routes
+  for_each = local.http_handlers
 
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"

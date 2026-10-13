@@ -35,15 +35,9 @@ resource "aws_sns_topic_subscription" "notifications" {
 
 data "aws_iam_policy_document" "assess_narrate" {
   statement {
-    sid     = "InvokeNarrationModel"
-    actions = ["bedrock:InvokeModel"]
-
-    resources = concat(
-      ["arn:aws:bedrock:${var.region}:${data.aws_caller_identity.current.account_id}:inference-profile/${var.narration_model_id}"],
-      [for r in var.narration_model_regions :
-        "arn:aws:bedrock:${r}::foundation-model/${replace(var.narration_model_id, "/^[a-z]+\\./", "")}"
-      ],
-    )
+    sid       = "InvokeNarrationModel"
+    actions   = ["bedrock:InvokeModel"]
+    resources = local.bedrock_model_arns
   }
 
   statement {

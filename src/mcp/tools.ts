@@ -94,9 +94,20 @@ export interface RoutineHabit {
   readonly observedDays: number;
 }
 
+export interface SentToday {
+  readonly sentAtMinute: number;
+  readonly severity: Severity;
+  readonly message: string;
+}
+
 export interface ExplainData {
   readonly kind: 'explanation';
   readonly found: boolean;
+  /**
+   * Every message sent so far today, oldest first — the "why" covers the latest, but
+   * a family member scrolling back through their phone sees all of them.
+   */
+  readonly sentToday: readonly SentToday[];
   readonly dateKey: string | null;
   readonly sentAtMinute: number | null;
   readonly severity: Severity | null;
@@ -137,10 +148,51 @@ function hhmm(minuteOfDay: number): string {
   return formatMinute(minuteOfDay);
 }
 
-function describeLateness(minutes: number): string {
-  if (minutes < 60) return `about ${minutes} minutes later than usual`;
-  const hours = Math.round((minutes / 60) * 2) / 2;
-  return `about ${hours} ${hours === 1 ? 'hour' : 'hours'} later than usual`;
+const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+/** How lateness sounds when said aloud: "about an hour and a half", not "1.5 hours". */
+export function describeLateness(minutes: number): string {
+  if (minutes < 15) return 'a few minutes later than usual';
+  if (minutes < 50) return `about ${Math.round(minutes / 5) * 5} minutes later than usual`;
+  const halfHours = Math.round(minutes / 30);
+  const hours = Math.floor(halfHours / 2);
+  const half = halfHours % 2 === 1;
+  if (hours === 0) return 'about half an hour later than usual';
+  if (hours === 1) return half ? 'about an hour and a half later than usual' : 'about an hour later than usual';
+  const word = NUMBER_WORDS[hours] ?? String(hours);
+  return `about ${word}${half ? ' and a half' : ''} hours later than usual`;
+}
+
+/** "Tuesday 20 October". Dates are spoken, so ISO keys never reach a sentence. */
+export function spokenDate(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  if (y === undefined || m === undefined || d === undefined) return dateKey;
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  });
+}
+
+/**
+ * One habit as a clause in a spoken sentence: "up and about by 07:30",
+ * "in the kitchen by 08:08", "through the front door by 07:43".
+ */
+function habitClause(anchor: Pick<Anchor, 'key' | 'zone' | 'kind'>, minute: number): string {
+  const at = hhmm(minute);
+  if (anchor.key === 'first_activity') return `up and about by ${at}`;
+  const place = anchor.zone === null ? 'about' : anchor.zone.replace(/_/g, ' ');
+  if (anchor.kind === 'door_open') return `through the ${place} by ${at}`;
+  return `in the ${place} by ${at}`;
+}
+
+/** Ties broken so "up and about" leads, then by time. */
+function byUsualTime(a: { key: string; usualMinute: number }, b: { key: string; usualMinute: number }): number {
+  if (a.usualMinute !== b.usualMinute) return a.usualMinute - b.usualMinute;
+  if (a.key === 'first_activity') return -1;
+  if (b.key === 'first_activity') return 1;
+  return a.key.localeCompare(b.key);
 }
 
 function titleCase(value: string): string {
@@ -258,7 +310,7 @@ export function householdStatus(
         observedDays: anchor.observedDays,
       };
     })
-    .sort((a, b) => a.usualMinute - b.usualMinute);
+    .sort(byUsualTime);
 
   const base = {
     kind: 'status' as const,
@@ -289,7 +341,7 @@ export function householdStatus(
     const until = localParts(pause.to, tz).dateKey;
     return answer(
       'paused',
-      `Monitoring is paused until ${until}.`,
+      `Monitoring is paused until ${spokenDate(until)}.`,
       `Reason given: ${pause.reason}. I'm still keeping a record so the routine isn't forgotten.`,
       { pausedUntil: until, pauseReason: pause.reason },
     );
@@ -323,12 +375,17 @@ export function householdStatus(
 
   if (found.length === 0) {
     const done = habits.filter((h) => h.state === 'done').length;
+    // Past the usual time but still inside the normal range: say so, rather than a
+    // flat "nothing is overdue" that leaves the listener wondering about 07:30.
+    const pastUsual = habits.find((h) => h.state === 'waiting' && h.usualMinute <= minutesOfDay);
     return answer(
       'normal',
       done > 0
         ? `${Subject} seems to be having a normal day.`
         : `Nothing out of the ordinary so far today.`,
-      `Nothing is overdue. It's ${hhmm(minutesOfDay)}.`,
+      pastUsual === undefined
+        ? `Nothing is overdue. It's ${hhmm(minutesOfDay)}.`
+        : `It's ${hhmm(minutesOfDay)}. ${pastUsual.name} is usually by ${hhmm(pastUsual.usualMinute)}, but a later start is still within ${subject === 'her' ? 'her' : `${subject}'s`} normal range.`,
     );
   }
 
@@ -368,13 +425,37 @@ export function householdStatus(
  * the alert took to send. Here the assessment is stored with the exact message and
  * the findings behind it, so the explanation is recalled rather than reconstructed.
  */
+/** Messages actually sent, from a day's assessments, oldest first. */
+export function sentMessages(
+  assessments: readonly StoredAssessment[],
+  timeZone: string,
+): SentToday[] {
+  return assessments
+    .flatMap((a) =>
+      a.notification === undefined
+        ? []
+        : [
+            {
+              at: a.evaluatedAt,
+              sentAtMinute: localParts(a.evaluatedAt, timeZone).minutesOfDay,
+              severity: a.notification.severity,
+              message: a.notification.text,
+            },
+          ],
+    )
+    .sort((x, y) => x.at - y.at)
+    .map(({ sentAtMinute, severity, message }) => ({ sentAtMinute, severity, message }));
+}
+
 export function explainAssessment(
   stored: StoredAssessment | undefined,
   timeZone: string,
+  sentToday: readonly SentToday[] = [],
 ): ToolAnswer<ExplainData> {
   const empty: ExplainData = {
     kind: 'explanation',
     found: false,
+    sentToday,
     dateKey: null,
     sentAtMinute: null,
     severity: null,
@@ -396,17 +477,28 @@ export function explainAssessment(
   }
 
   const when = localParts(stored.evaluatedAt, timeZone);
-  const ordered = [...found].sort((a, b) => b.minutesOverdue - a.minutesOverdue);
-  const parts = ordered
-    .slice(0, 3)
-    .map(
-      (f) =>
-        `${f.label}, which usually happens by ${hhmm(f.medianMinute)} and was ${f.minutesOverdue} minutes overdue`,
-    );
+  const ordered = [...found].sort((a, b) => {
+    if (a.anchorKey === 'first_activity') return -1;
+    if (b.anchorKey === 'first_activity') return 1;
+    return b.minutesOverdue - a.minutesOverdue;
+  });
+  const lead = ordered[0];
+  const rest = ordered.slice(1).map((f) => shortName({ key: f.anchorKey, zone: f.zone }).toLowerCase());
+
+  const leadSentence =
+    lead === undefined
+      ? ''
+      : lead.anchorKey === 'first_activity'
+        ? `there was no sign of her being up. She's usually up and about by ${hhmm(lead.medianMinute)}, held on ${lead.presentDays} of the last ${lead.observedDays} comparable days.`
+        : `there was no ${lead.label}. That usually happens by ${hhmm(lead.medianMinute)}.`;
+
+  const restSentence =
+    rest.length === 0
+      ? ''
+      : ` The ${rest.length === 1 ? rest[0] : `${rest.slice(0, -1).join(', ')} and ${rest[rest.length - 1]}`} ${rest.length === 1 ? 'was' : 'were'} quiet too.`;
 
   const text =
-    `At ${hhmm(when.minutesOfDay)} I found ${found.length} usual ` +
-    `thing${found.length === 1 ? '' : 's'} hadn't happened: ${parts.join('; ')}. ` +
+    `I messaged you at ${hhmm(when.minutesOfDay)} because ${leadSentence}${restSentence} ` +
     `I only raise something once it's later than this household's own normal range, not on a fixed schedule.`;
 
   return {
@@ -414,6 +506,7 @@ export function explainAssessment(
     data: {
       kind: 'explanation',
       found: true,
+      sentToday,
       dateKey: when.dateKey,
       sentAtMinute: when.minutesOfDay,
       severity: stored.notification?.severity ?? null,
@@ -464,12 +557,11 @@ export function describeRoutine(
     observedDays: a.observedDays,
   });
 
-  const weekday = anchorsFor(baseline, 'weekday')
-    .map(toHabit)
-    .sort((a, b) => a.usualMinute - b.usualMinute);
-  const weekend = anchorsFor(baseline, 'weekend')
-    .map(toHabit)
-    .sort((a, b) => a.usualMinute - b.usualMinute);
+  const weekdayAnchors = [...anchorsFor(baseline, 'weekday')].sort((a, b) =>
+    byUsualTime({ key: a.key, usualMinute: a.medianMinute }, { key: b.key, usualMinute: b.medianMinute }),
+  );
+  const weekday = weekdayAnchors.map(toHabit);
+  const weekend = anchorsFor(baseline, 'weekend').map(toHabit).sort(byUsualTime);
 
   const data: RoutineData = {
     kind: 'routine',
@@ -493,12 +585,12 @@ export function describeRoutine(
     };
   }
 
-  const described = weekday.map((h) => `${h.label} around ${hhmm(h.usualMinute)}`);
-  const last = described.pop();
+  const clauses = weekdayAnchors.map((a) => habitClause(a, a.medianMinute));
+  const last = clauses.pop();
 
   return {
     text:
-      `On a working day, ${name ?? 'she'} usually has ${described.join(', ')}${described.length > 0 ? ', and ' : ''}${last}. ` +
+      `On a working day, ${name ?? 'she'} is usually ${clauses.join(', ')}${clauses.length > 0 ? ', and ' : ''}${last}. ` +
       `That's learned from ${baseline.daysObserved} days, not set by anyone. ` +
       `I only watch for habits that hold on more than nineteen days in twenty — anything less reliable than that isn't a habit, and alerting on it would just be noise.`,
     data,
@@ -531,7 +623,7 @@ export function describeSuppression(
   const until = localParts(window.to, timeZone).dateKey;
   return {
     text:
-      `Right. I'll stop watching until ${until} — reason noted as "${window.reason}". ` +
+      `Right. I'll stop watching until ${spokenDate(until)}, while she's ${window.reason}. ` +
       `I'll keep recording activity in the background, so the routine won't be forgotten, ` +
       `and I just won't raise anything until then.`,
     data: {

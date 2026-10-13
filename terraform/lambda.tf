@@ -161,6 +161,12 @@ data "aws_iam_policy_document" "mcp" {
     resources = [aws_dynamodb_table.state.arn]
   }
 
+  # To check the access code. The Ring credentials stay out of reach.
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.access_code.arn]
+  }
+
   statement {
     actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
     resources = [aws_kms_key.main.arn]
@@ -171,6 +177,35 @@ resource "aws_iam_role_policy" "mcp" {
   name   = "access"
   role   = aws_iam_role.handler["mcp"].id
   policy = data.aws_iam_policy_document.mcp.json
+}
+
+# The assistant touches no table at all. It reaches the data only through the MCP
+# server, over HTTP, which is the point: it is a client of the server like any
+# other, not a back door around it.
+data "aws_iam_policy_document" "assistant" {
+  statement {
+    sid       = "CheckAccessCode"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.access_code.arn]
+  }
+
+  statement {
+    sid       = "DecryptAccessCode"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.main.arn]
+  }
+
+  statement {
+    sid       = "RouteWithBedrock"
+    actions   = ["bedrock:InvokeModel"]
+    resources = local.bedrock_model_arns
+  }
+}
+
+resource "aws_iam_role_policy" "assistant" {
+  name   = "access"
+  role   = aws_iam_role.handler["assistant"].id
+  policy = data.aws_iam_policy_document.assistant.json
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -212,6 +247,12 @@ resource "aws_lambda_function" "handler" {
       RING_API_BASE_URL   = "https://api.amazonvision.com"
       RING_OAUTH_BASE_URL = "https://oauth.ring.com"
       NODE_OPTIONS        = "--enable-source-maps"
+
+      ACCESS_CODE_SECRET_ARN = aws_secretsmanager_secret.access_code.arn
+      MCP_URL                = "${aws_apigatewayv2_api.main.api_endpoint}/mcp"
+      ASSISTANT_MODEL_ID     = var.narration_model_id
+      RESIDENT_NAME          = var.resident_name
+      DEMO_CLOCK             = var.demo_clock_enabled ? "enabled" : "disabled"
     }
   }
 

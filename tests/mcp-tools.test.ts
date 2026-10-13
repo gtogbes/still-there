@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSuppression,
   endSuppressions,
+  spokenDate,
+  sentMessages,
+  describeLateness,
   describeRoutine,
   describeSuppression,
   explainAssessment,
@@ -145,8 +148,9 @@ describe('explain_last_alert', () => {
 
     const stored = { ...assessment, anchorCount: 4, historyDays: 42, eventsToday: 0 };
     const { text } = explainAssessment(stored, TZ);
-    expect(text).toMatch(/\d{1,2}:\d{2}/);
-    expect(text).toContain('overdue');
+    expect(text).toMatch(/I messaged you at \d{2}:\d{2}/);
+    expect(text).toMatch(/usually up and about by \d{2}:\d{2}/);
+    expect(text).toMatch(/held on \d+ of the last \d+/);
     // The justification for keeping an audit trail at all: the answer explains the
     // threshold rather than just restating the alert.
     expect(text).toContain("household's own normal range");
@@ -209,7 +213,8 @@ describe('pause_monitoring', () => {
   it('confirms what it did, and that history is still being kept', () => {
     const { text } = describeSuppression(buildSuppression(noon, 7, 'in hospital'), TZ);
     expect(text).toContain('in hospital');
-    expect(text).toContain(localParts(noon + 7 * 86_400_000, TZ).dateKey);
+    expect(text).toContain(spokenDate(localParts(noon + 7 * 86_400_000, TZ).dateKey));
+    expect(text).not.toMatch(/\d{4}-\d{2}-\d{2}/);
     // Important reassurance: pausing must not sound like it discards the routine,
     // or nobody will use it and the system will cry wolf through every holiday.
     expect(text).toContain("routine won't be forgotten");
@@ -355,5 +360,40 @@ describe('resume_monitoring', () => {
     const { answer } = endSuppressions([], noon);
     expect(answer.data.wasPaused).toBe(false);
     expect(answer.text).toContain("wasn't paused");
+  });
+});
+
+describe('spoken phrasing', () => {
+  it.each([
+    [10, 'a few minutes later than usual'],
+    [33, 'about 35 minutes later than usual'],
+    [62, 'about an hour later than usual'],
+    [95, 'about an hour and a half later than usual'],
+    [150, 'about two and a half hours later than usual'],
+    [238, 'about four hours later than usual'],
+  ])('%d minutes reads as "%s"', (minutes, expected) => {
+    expect(describeLateness(minutes)).toBe(expected);
+  });
+
+  it('never says "1.5 hours" or similar', () => {
+    for (let m = 0; m < 600; m += 7) expect(describeLateness(m)).not.toMatch(/\d\.\d/);
+  });
+});
+
+describe('messages sent today', () => {
+  it('lists every message sent, oldest first, and nothing that was not sent', () => {
+    const base = { householdId: 'h', dateKey: TODAY, dayClass: 'weekday' as const, findings: [], suppressed: false, anchorCount: 4, historyDays: 42, eventsToday: 0 };
+    const at = (m: number) => fromLocal(TODAY, m, TZ);
+    const sent = sentMessages(
+      [
+        { ...base, evaluatedAt: at(750), notification: { text: 'third', source: 'model', severity: 'high', delivered: true } },
+        { ...base, evaluatedAt: at(540), notification: { text: 'first', source: 'model', severity: 'low', delivered: true } },
+        { ...base, evaluatedAt: at(600) },
+        { ...base, evaluatedAt: at(645), notification: { text: 'second', source: 'fallback', severity: 'medium', delivered: true } },
+      ],
+      TZ,
+    );
+    expect(sent.map((s) => s.message)).toEqual(['first', 'second', 'third']);
+    expect(sent.map((s) => s.sentAtMinute)).toEqual([540, 645, 750]);
   });
 });

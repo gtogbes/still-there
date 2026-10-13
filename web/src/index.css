@@ -1,0 +1,117 @@
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* The room the devices sit in. Warm, domestic, deliberately not a dashboard. */
+  --color-room-50: #f7f4ef;
+  --color-room-100: #efe9e1;
+  --color-room-200: #e3dbcf;
+  --color-room-600: #7a6f60;
+  --color-room-800: #3f382f;
+
+  /* Echo Show screen. */
+  --color-screen-900: #0b1626;
+  --color-screen-800: #10203a;
+  --color-screen-700: #17304f;
+  --color-screen-600: #224168;
+  --color-screen-400: #6f8bb0;
+  --color-screen-300: #9cb2cf;
+  --color-screen-100: #e3ebf6;
+
+  /* Alexa light ring. */
+  --color-alexa: #19c7ff;
+
+  /*
+   * State colours. Amber for "different today", never red. Red says emergency, and
+   * StillThere never knows that something is an emergency — only that something
+   * usual hasn't happened. The palette is held to the same rule as the wording.
+   */
+  --color-calm: #5fd0a0;
+  --color-different: #ffb44d;
+  --color-unseen: #a6a3c9;
+
+  --animate-rise: rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-ring: ring 1.6s ease-in-out infinite;
+  --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
+  --animate-slide-down: slide-down 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ring {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleX(0.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-room-100 font-sans text-room-800 antialiased;
+}
+
+/* Range input, styled once rather than per-browser in JSX. */
+input[type='range'].clock {
+  @apply h-2 w-full cursor-pointer appearance-none rounded-full bg-room-200;
+}
+input[type='range'].clock::-webkit-slider-thumb {
+  @apply h-5 w-5 appearance-none rounded-full border-2 border-white bg-room-800 shadow;
+}
+input[type='range'].clock::-moz-range-thumb {
+  @apply h-5 w-5 rounded-full border-2 border-white bg-room-800 shadow;
+}
+input[type='range'].clock:focus-visible {
+  @apply outline-2 outline-offset-4 outline-room-800;
+}

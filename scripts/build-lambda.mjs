@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outdir = join(root, 'dist', 'handlers');
 
-const HANDLERS = ['webhook', 'token', 'link', 'home', 'assess', 'mcp'];
+const HANDLERS = ['webhook', 'token', 'link', 'home', 'assess', 'mcp', 'assistant'];
 
 /**
  * Operator scripts that import domain code.
@@ -29,7 +29,7 @@ const HANDLERS = ['webhook', 'token', 'link', 'home', 'assess', 'mcp'];
  * stripping does not rewrite them to `.ts`. esbuild does, so the tools get bundled
  * the same way the handlers do rather than growing a parallel import convention.
  */
-const TOOLS = ['seed-household', 'demo-local', 'demo-live'];
+const TOOLS = ['seed-household', 'demo-local', 'demo-live', 'seed-demo-alerts'];
 
 await rm(join(root, 'dist'), { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });

@@ -42,10 +42,27 @@ export function presentedCode(
   return presented(headers);
 }
 
+/**
+ * Header the browser app uses. MCP clients use `Authorization: Bearer`.
+ *
+ * Two headers because of CloudFront: whether it forwards `Authorization` depends on
+ * cache-policy settings that are easy to get subtly wrong, while an ordinary custom
+ * header is forwarded by the standard origin request policy with no special care.
+ */
+export const ACCESS_HEADER = 'x-still-there-access';
+
+function header(headers: Record<string, string | undefined>, name: string): string | undefined {
+  const key = Object.keys(headers).find((k) => k.toLowerCase() === name);
+  return key === undefined ? undefined : headers[key];
+}
+
 function presented(headers: Record<string, string | undefined> | undefined): string | undefined {
   if (headers === undefined) return undefined;
-  const key = Object.keys(headers).find((k) => k.toLowerCase() === 'authorization');
-  const value = key === undefined ? undefined : headers[key];
+
+  const custom = header(headers, ACCESS_HEADER)?.trim();
+  if (custom !== undefined && custom !== '') return custom;
+
+  const value = header(headers, 'authorization');
   if (value === undefined) return undefined;
   const match = /^Bearer\s+(.+)$/i.exec(value.trim());
   return match?.[1]?.trim();

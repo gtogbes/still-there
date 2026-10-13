@@ -43,6 +43,11 @@ describe('access code', () => {
     expect((await checkAccess(undefined)).allowed).toBe(false);
   });
 
+  it('accepts the browser header used behind CloudFront', async () => {
+    expect((await checkAccess({ 'X-Still-There-Access': CODE })).allowed).toBe(true);
+    expect((await checkAccess({ 'x-still-there-access': 'wrong' })).allowed).toBe(false);
+  });
+
   it('refuses a code sent without the Bearer scheme', async () => {
     expect((await checkAccess({ authorization: CODE })).allowed).toBe(false);
   });

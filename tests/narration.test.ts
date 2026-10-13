@@ -168,9 +168,30 @@ describe('the prompt', () => {
       residentName: 'Jasmine',
     });
     expect(prompt).toContain('activity in the kitchen');
-    expect(prompt).toContain('144 minutes overdue');
-    expect(prompt).toContain('30 of the last 30');
+    expect(prompt).toContain('usually by 08:11');
+    expect(prompt).toContain('about two hours later than usual');
     expect(prompt).toContain('Jasmine');
+  });
+
+  it('never shows the model a raw minute count or the deadline', () => {
+    // Given "expected by 09:00, 144 minutes overdue", the live model called the
+    // deadline her usual time and quoted the minutes back, whatever the instructions
+    // said. It cannot repeat what it is not shown.
+    const prompt = buildUserPrompt({ findings, severity: 'medium', localTime: '11:24' });
+    expect(prompt).not.toContain('144');
+    expect(prompt).not.toContain('09:00');
+  });
+
+  it('leads with not having been seen at all', () => {
+    const prompt = buildUserPrompt({
+      findings: [
+        finding({ label: 'activity in the hallway', minutesOverdue: 240 }),
+        finding({ anchorKey: 'first_activity', label: 'first sign of activity', minutesOverdue: 200 }),
+      ],
+      severity: 'high',
+      localTime: '12:26',
+    });
+    expect(prompt.indexOf('first sign of activity')).toBeLessThan(prompt.indexOf('activity in the hallway'));
   });
 
   it('orders findings most overdue first', () => {

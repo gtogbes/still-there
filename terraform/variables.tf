@@ -97,6 +97,25 @@ variable "narration_model_regions" {
   default     = ["us-east-1", "us-east-2", "us-west-2"]
 }
 
+variable "resident_name" {
+  description = "How the assistant refers to the person being looked after."
+  type        = string
+  default     = "Jasmine"
+}
+
+variable "demo_clock_enabled" {
+  description = <<-EOT
+    Whether clients may ask the MCP server to answer as of a chosen time of day.
+
+    On for this hackathon deployment so a three-minute demonstration can show a
+    morning unfold. It only moves the time of day within today and never changes
+    stored data, but a production household should not be time-travellable by a
+    client, so the switch exists.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "assessment_enabled" {
   description = <<-EOT
     Whether the scheduled assessment runs.
