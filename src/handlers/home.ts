@@ -302,13 +302,23 @@ function page(links: Links): string {
 </html>`;
 }
 
+/** Treats an unset or empty environment variable the same way. */
+function configured(value: string | undefined, fallback: string): string {
+  return value === undefined || value.trim() === '' ? fallback : value.trim();
+}
+
 export async function handler(): Promise<LambdaResponse> {
   const links: Links = {
-    repo: process.env['REPO_URL'] ?? 'https://github.com/gtogbes/still-there',
-    // Not passed from Terraform: the distribution routes to the API, and the API's
-    // functions referencing the distribution would be a dependency cycle.
-    web: process.env['WEB_URL'] ?? 'https://d3l9lbhc7hpjm0.cloudfront.net',
-    mcp: process.env['MCP_URL'] ?? 'https://eop88u898f.execute-api.us-east-1.amazonaws.com/mcp',
+    repo: configured(process.env['REPO_URL'], 'https://github.com/gtogbes/still-there'),
+    // WEB_URL is set from the web_domain variable, not from the distribution's
+    // own attribute: these functions are an origin of that distribution, so
+    // referencing it from here would be a dependency cycle. It is empty when no
+    // custom domain is configured, hence the fallback.
+    web: configured(process.env['WEB_URL'], 'https://stillthere.ogbes.com'),
+    mcp: configured(
+      process.env['MCP_URL'],
+      'https://eop88u898f.execute-api.us-east-1.amazonaws.com/mcp',
+    ),
   };
 
   return {

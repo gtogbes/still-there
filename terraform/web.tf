@@ -147,6 +147,11 @@ resource "aws_cloudfront_distribution" "web" {
   price_class         = "PriceClass_100" # North America and Europe. Cheapest.
   http_version        = "http2and3"
 
+  # The provider defaults this to false, and the custom domain publishes an AAAA
+  # record — so without it an IPv6-only client resolves an address that refuses
+  # the connection. No extra cost.
+  is_ipv6_enabled = true
+
   origin {
     origin_id                = "web"
     domain_name              = aws_s3_bucket.web.bucket_regional_domain_name
@@ -194,8 +199,15 @@ resource "aws_cloudfront_distribution" "web" {
     }
   }
 
+  # Empty unless web_domain is set. The .cloudfront.net name always works.
+  aliases = local.has_domain ? [var.web_domain] : []
+
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = local.has_domain ? null : true
+    acm_certificate_arn            = local.has_domain ? aws_acm_certificate_validation.web[0].certificate_arn : null
+    ssl_support_method             = local.has_domain ? "sni-only" : null
+    # Only meaningful with a custom certificate; the default one sets its own.
+    minimum_protocol_version = local.has_domain ? "TLSv1.2_2021" : null
   }
 }
 
@@ -218,4 +230,86 @@ output "access_code" {
   description = "Shared demo access code. Read with: terraform output -raw access_code"
   value       = random_password.access_code.result
   sensitive   = true
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Custom domain
+#
+# Added to the distribution above rather than hosted separately, so the custom
+# domain inherits the same origin access control, the same security headers, and
+# the same same-origin /api/* behaviour the deployed app is tested against. The
+# .cloudfront.net name keeps working, which is a useful fallback if DNS is wrong.
+#
+# All of it is optional: with web_domain empty the distribution uses the default
+# CloudFront certificate and no Route 53 records are created, so a fresh deploy by
+# somebody who does not own this domain still works.
+#
+# The certificate must live in us-east-1 to be usable by CloudFront, which this
+# stack already deploys to.
+# ──────────────────────────────────────────────────────────────────────────────
+
+locals {
+  has_domain = var.web_domain != ""
+}
+
+data "aws_route53_zone" "web" {
+  count        = local.has_domain ? 1 : 0
+  name         = var.hosted_zone_name
+  private_zone = false
+}
+
+resource "aws_acm_certificate" "web" {
+  count             = local.has_domain ? 1 : 0
+  domain_name       = var.web_domain
+  validation_method = "DNS"
+
+  lifecycle {
+    # A replacement certificate has to exist and be validated before the
+    # distribution stops referring to the old one.
+    create_before_destroy = true
+  }
+}
+
+# Keyed on the domain name rather than on the certificate's validation options,
+# which are unknown until the certificate exists — and an unknown for_each key
+# fails at plan time rather than apply time.
+resource "aws_route53_record" "web_cert_validation" {
+  for_each = local.has_domain ? { (var.web_domain) = true } : {}
+
+  zone_id = data.aws_route53_zone.web[0].zone_id
+  name    = tolist(aws_acm_certificate.web[0].domain_validation_options)[0].resource_record_name
+  type    = tolist(aws_acm_certificate.web[0].domain_validation_options)[0].resource_record_type
+  records = [tolist(aws_acm_certificate.web[0].domain_validation_options)[0].resource_record_value]
+  ttl     = 60
+
+  # The validation record is derived from the certificate, so re-creating the
+  # certificate must be able to replace it rather than collide with it.
+  allow_overwrite = true
+}
+
+resource "aws_acm_certificate_validation" "web" {
+  count                   = local.has_domain ? 1 : 0
+  certificate_arn         = aws_acm_certificate.web[0].arn
+  validation_record_fqdns = [for record in aws_route53_record.web_cert_validation : record.fqdn]
+}
+
+# A and AAAA both, because the distribution serves IPv6 and a client on an
+# IPv6-only network gets no answer from an A record alone.
+resource "aws_route53_record" "web" {
+  for_each = local.has_domain ? toset(["A", "AAAA"]) : toset([])
+
+  zone_id = data.aws_route53_zone.web[0].zone_id
+  name    = var.web_domain
+  type    = each.value
+
+  alias {
+    name                   = aws_cloudfront_distribution.web.domain_name
+    zone_id                = aws_cloudfront_distribution.web.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+output "web_domain_url" {
+  description = "The custom domain, once DNS has propagated. Empty if web_domain is unset."
+  value       = local.has_domain ? "https://${var.web_domain}" : ""
 }

@@ -12,6 +12,8 @@ what the live app shows after the nightly reset.
       `AWS_PROFILE=gt aws lambda invoke --function-name still-there-dev-demo-reset /tmp/r.json`
 - [ ] **Chrome**, a fresh window at about 1500 × 1000, zoom 100%, bookmarks bar hidden,
       no other tabs. Speech recognition only works in Chrome.
+- [ ] Use **https://stillthere.ogbes.com**, not the `.cloudfront.net` address — the
+      address bar is on screen for the whole video.
 - [ ] Enter the access code **before** you start recording. It is remembered in the browser.
 - [ ] Top right: **Spoken replies on**.
 - [ ] Click the mic once off-camera so Chrome's microphone permission prompt is already done.

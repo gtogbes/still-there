@@ -22,6 +22,15 @@ describe('landing page', () => {
     expect(body).toContain('2025-11-25');
   });
 
+  it('falls back when no custom domain is configured', async () => {
+    // Terraform sets WEB_URL to "" when web_domain is unset, and an empty link
+    // would render a button that goes nowhere.
+    process.env['WEB_URL'] = '';
+    const { body } = await handler();
+    expect(body).toContain('href="https://stillthere.ogbes.com"');
+    expect(body).not.toContain('href=""');
+  });
+
   it('says plainly what is simulated', async () => {
     const { body } = await handler();
     expect(body).toMatch(/Simulated:/);

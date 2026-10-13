@@ -9,7 +9,7 @@ Built for the Alexa+ track of the Build, Ship, Shape: Amazon Developer Hackathon
 
 | | |
 |---|---|
-| **Try it** | **https://d3l9lbhc7hpjm0.cloudfront.net** (access code in the Devpost testing instructions) |
+| **Try it** | **https://stillthere.ogbes.com** (access code in the Devpost testing instructions) |
 | **MCP endpoint** | `https://eop88u898f.execute-api.us-east-1.amazonaws.com/mcp` |
 | **Protocol** | MCP `2025-11-25`, Streamable HTTP, 5 tools |
 | **Source** | MIT. Everything here, including the infrastructure. |
@@ -514,12 +514,16 @@ terraform output -raw access_code         # generated, stored in Secrets Manager
 cd .. && AWS_PROFILE=… scripts/deploy-web.sh
 ```
 
+A custom domain is optional. Set `web_domain` and `hosted_zone_name` and the same
+distribution picks up an ACM certificate, the alias and Route 53 records; leave them
+empty and it serves on its CloudFront address alone.
+
 Then give it a household to talk about, and check the result end to end:
 
 ```bash
 AWS_PROFILE=… node dist/tools/seed-household.mjs --history 42 --break-today
 AWS_PROFILE=… node dist/tools/seed-demo-alerts.mjs   # the three stored messages
-node scripts/smoke-web.mjs https://<distribution>.cloudfront.net
+node scripts/smoke-web.mjs https://<your-domain>
 ```
 
 `smoke-web.mjs` checks the page and its security headers, that both API paths refuse

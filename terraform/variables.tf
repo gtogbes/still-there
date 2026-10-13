@@ -157,3 +157,21 @@ variable "alarm_email" {
   type        = string
   default     = ""
 }
+
+variable "web_domain" {
+  description = <<-EOT
+    Custom domain for the web app, e.g. "stillthere.example.com".
+
+    Leave empty to use the CloudFront domain only. When set, the hosted zone named
+    by hosted_zone_name must exist in this account, because the certificate is
+    validated and the records are created through it.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "hosted_zone_name" {
+  description = "Route 53 public hosted zone holding web_domain, e.g. \"example.com\". Ignored when web_domain is empty."
+  type        = string
+  default     = ""
+}

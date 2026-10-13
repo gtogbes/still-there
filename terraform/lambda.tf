@@ -289,6 +289,10 @@ resource "aws_lambda_function" "handler" {
       # reference to the assess function from the shared block would be a cycle.
       DEMO_RESET           = var.demo_reset_enabled ? "enabled" : "disabled"
       ASSESS_FUNCTION_NAME = "${local.name}-assess"
+
+      # The variable, not the distribution's attribute: these functions are an
+      # origin of that distribution, so referencing it here would be a cycle.
+      WEB_URL = local.has_domain ? "https://${var.web_domain}" : ""
     }
   }
 
