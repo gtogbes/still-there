@@ -1,134 +1,249 @@
-# Demo video: script and recording checklist
+# Demo video: script and recording guide
 
-Target **2:50**. The rules allow under three minutes, and judges may stop at 3:00.
-About 400 words of narration at a calm pace. Every number said aloud below matches
-what the live app shows after the nightly reset.
+Under three minutes. Judges may stop at 3:00, so the story has to land early.
 
-## Before you record
+---
 
-- [ ] **Record on a day the reset has run.** It runs at 00:05 London time. Open the app
-      and check the phone at 12:30 shows three messages: 09:00, 10:45 and 12:30.
-      If not, run it by hand:
+## Part 1: what this video has to achieve
+
+Four things, in this order of importance.
+
+1. **Make someone feel the problem inside twenty seconds.** Not "monitoring for
+   the elderly". The specific dread: you have a camera at your mum's door, it tells you
+   when something happens, and the day you are frightened of is the day nothing does.
+2. **Show the product working, with cause and effect.** The viewer has to see time move,
+   see nothing happen, and see the family get told. If they cannot tell what caused what,
+   the demo has failed.
+3. **Show the one thing nothing else does: it explains itself.** Ask it why it got in
+   touch and it answers from the record. This is the part a judge remembers.
+4. **Prove it is real.** A live MCP server on AWS, five tools, Bedrock choosing between
+   them, its own screen for an Echo Show.
+
+## The story, in one paragraph
+
+A camera tells you when something happens. Nobody sells you the opposite. StillThere
+spends a fortnight learning one person's ordinary day, then watches for the day that
+does not happen: no one up, no kettle, no front door. When a habit is later than that
+person's own normal range it sends the family one short message, and if the morning gets
+worse it says so again, at most three times. Then, because it stored what it sent and
+why, the family can ask it out loud and get the actual reasoning back.
+
+## The shape of the recording
+
+Three acts, with a turn in the middle.
+
+| Act | Running time | What the viewer takes away |
+|---|---|---|
+| The dread, and the quiet default | 0:00 to 0:40 | Most days it says nothing. That is deliberate. |
+| The morning that did not happen | 0:40 to 2:10 | One nudge, then only on escalation, and it explains itself. |
+| What is underneath, and what is honest | 2:10 to 2:50 | A real MCP server, and a clear account of what is simulated. |
+
+Your narration is about 400 words, which is roughly two minutes and forty seconds at a
+calm pace. The device also speaks for about thirty seconds. Some of that overlaps, since
+you talk over the playback, so expect a first take between 2:50 and 3:10.
+
+**Time a dry run before you record.** If you are over three minutes, cut in this order
+and stop as soon as you are under:
+
+1. The "That is all she gets" aside after the messages land. The phone is already on
+    screen, so the point is made visually.
+2. The second paragraph of **Underneath**, from "The model only picks the tool". Keep the
+    first paragraph, which is the part that proves the track requirement.
+3. The "She's away" beat. Losing it costs you a point the judging guidance rewards
+    (state held across a conversation), so cut it last.
+
+Do not cut the play sequence or the "ask it why" beat. Those two are the demo.
+
+---
+
+## Part 2: before you record
+
+Record in **two passes**. It is far easier than talking and clicking at once:
+
+1. **Pass one, picture only.** Click through the whole thing in silence. Do it twice and
+   keep the better take.
+2. **Pass two, voice over the picture.** Read the narration while watching your own
+   recording. Re-record just the audio if you fluff a line.
+
+If you would rather do it live, that is fine, but rehearse the clicks once first.
+
+### Checklist
+
+- [ ] **Open https://stillthere.ogbes.com in Chrome.** Not the `.cloudfront.net` address.
+      The URL is on screen the whole time.
+- [ ] **Enter the access code before you start recording.** It is remembered for the tab.
+- [ ] **Check today's demo data is there.** Drag the clock to 12:30 and confirm the phone
+      on the right shows three messages. If it shows none, the nightly reset did not run:
       `AWS_PROFILE=gt aws lambda invoke --function-name still-there-dev-demo-reset /tmp/r.json`
-- [ ] **Chrome**, a fresh window at about 1500 × 1000, zoom 100%, bookmarks bar hidden,
-      no other tabs. Speech recognition only works in Chrome.
-- [ ] Use **https://stillthere.ogbes.com**, not the `.cloudfront.net` address, because the
-      address bar is on screen for the whole video.
-- [ ] Enter the access code **before** you start recording. It is remembered in the browser.
-- [ ] Top right: **Spoken replies on**.
-- [ ] Click the mic once off-camera so Chrome's microphone permission prompt is already done.
-- [ ] Do Not Disturb on. Quit Slack, Mail and anything else that pops up.
-- [ ] **Capture system audio**, or the spoken replies will be missing. macOS's own
-      Cmd+Shift+5 records the mic only. Use **OBS** (30 or later) with a *macOS Screen
-      Capture* source with audio enabled, plus your mic as a second source.
-- [ ] For the Inspector shot, have the terminal ready with the output **already on screen**
-      and the command scrolled out of view. The command contains the access code; it
-      must not appear in the video. Run it from outside the project folder, or npm
-      echoes the full command, code included.
-- [ ] Have the README's *How it works* diagrams open in a second window for 2:10.
-- [ ] **MCP Apps shot**: run `AWS_PROFILE=gt node dist/tools/local-mcp.mjs --demo-minute 750`
-      and the ext-apps reference host (`examples/basic-host`, `npm start`), open
-      http://localhost:8080, choose `still_there_status`, *Call Tool*. Record ~5 seconds,
-      and click *Check again* once.
-- [ ] Do one full dry run. Read the narration aloud with a stopwatch.
+      then reload. Put the clock back to 08:00 before recording.
+- [ ] **Window about 1500 x 1000**, zoom 100%, bookmarks bar hidden, one tab only.
+- [ ] **Spoken replies on** (top right). The device talking is half the effect.
+- [ ] **Click the microphone once before recording** so Chrome's permission prompt is out
+      of the way.
+- [ ] Do Not Disturb on. Quit Slack and Mail.
+- [ ] **Capture system audio**, or the spoken replies will be silent. macOS's Cmd+Shift+5
+      records the microphone only. Use **OBS** with a *macOS Screen Capture* source with
+      audio enabled, plus your microphone as a second source.
+- [ ] For the terminal shot, have the MCP Inspector output **already on screen** with the
+      command scrolled out of view. The command contains the access code.
+- [ ] Reload the page so the clock is back at 08:00 and no answer card is showing.
 
-## Script
+### One thing that will trip you up
 
-Timings are targets. **VO** is your narration, **DO** is what you click,
-**SAYS** is what the device says back.
+**Do not read the exact times aloud.** Jasmine's routine is relearned every night from
+generated history, so "usually by 07:32" might be 07:35 tomorrow. Say "about half seven"
+and you can record on any day. The script below never states a precise minute.
 
-### 0:00 – 0:15 · The hook
+---
 
-**Screen:** the app at 08:00, phone showing *No notifications*.
+## Part 3: the opening, in detail
 
-**VO:** "My mum lives alone. Security cameras tell you when something happens. But the
-day I actually dread is the one where *nothing* does. This is StillThere, on Alexa+."
+You asked what you are actually doing here. The answer is: **almost nothing.** The
+opening is a still screen and your voice. Resist the urge to click.
 
-### 0:15 – 0:35 · What it is
+**What is on your screen when you press record**
 
-**DO:** nothing yet. Let the timeline sit.
+- Browser at `stillthere.ogbes.com`, address bar visible.
+- The dark Echo Show fills most of the window. Top left reads "Wednesday · 08:00".
+- The headline says *Nothing out of the ordinary so far today.*
+- Under it, four habits as rows: Up and about, Hallway, Front door, Kitchen. Each has a
+  hollow ring at its usual time. A cyan **NOW 08:00** line sits to the left of them.
+- Right-hand side: a phone showing 08:00 and **No notifications**, and the demo clock
+  with 08:00 highlighted.
 
-**VO:** "Over a few weeks it learns her normal day: up and about by half seven, out of
-the front door, in the kitchen by quarter past eight. It only counts something as a
-habit if it holds nineteen days in twenty. It's eight o'clock now. She's a little later
-than usual, but still inside her own normal range, so StillThere stays quiet."
+**What you do**
 
-### 0:35 – 1:10 · The morning that didn't happen
+| Time | Your hands | What you say |
+|---|---|---|
+| 0:00 to 0:07 | Nothing. Let the still screen sit there. | "My mum is eighty-two and lives alone. I have a camera at her front door." |
+| 0:07 to 0:15 | Nothing. | "It tells me when something happens. A delivery, a car going past. The day I dread is the one where nothing happens at all, and no camera tells you that." |
+| 0:15 to 0:18 | Move the cursor slowly along the four habit rows. Do not click. | "This is StillThere." |
 
-**DO:** click **09:30** on the demo clock. Pause one beat on the phone.
+That is the whole opening: two sentences of problem, one of product, over a static
+screen. The cursor movement at 0:16 is only there to point the viewer at the four rows
+before you explain them.
 
-**VO:** "Half past nine. Still nothing. Her daughter gets one short message."
+---
 
-**DO:** click **12:30**. Let the second and third messages land.
+## Part 4: the full script
 
-**VO:** "By lunchtime it's said so three times, and no more. Once when something looked
-different, again only when it got worse. It never guesses at causes. It won't say she
-might have fallen. It says what's missing, and how unusual that is for *her*."
+**SAY** is your narration. **DO** is your hands. **SCREEN** is what the viewer sees.
 
-### 1:10 – 1:45 · Asking why
+### 0:00 to 0:18 · The dread
 
-**DO:** click the **mic** and say: *"Why did you message me?"*
+As set out in Part 3. Still screen, no clicking.
 
-**SAYS:** "I messaged you at 12:30 because there was no sign of her being up…"
+### 0:18 to 0:40 · What it learned, and why it is quiet
 
-**VO** (over the card): "This is the part that matters. It isn't making an explanation
-up. It recalls the exact message it sent and the habits behind it, and how reliable each
-one has been. Underneath, you can see Bedrock picked the tool, and the MCP server
-answered."
+**DO:** nothing yet. Let the timeline hold.
 
-**DO:** point the cursor at the trace line under the input for a second.
+**SAY:** "Over a fortnight it learned her ordinary day. Up by about half seven, out of
+the front door, in the kitchen by quarter past eight."
 
-### 1:45 – 2:10 · It remembers
+**SAY:** "It is eight now, and she is already a little late. But still inside her own
+normal range, so it says nothing. An alert you get every day is one you stop reading."
 
-**DO:** mic: *"She's away next week."*
+> Why this beat matters: it sets up the quiet default, so the message landing later
+> actually means something. Skip this and the demo is just notifications appearing.
 
-**SAYS:** "Right. I'll stop watching until …"
+### 0:40 to 1:18 · Press play and let the morning fail
 
-**DO:** mic: *"Is Jasmine up yet?"* It answers that monitoring is paused.
+**DO:** click the round **play** button on the demo clock, bottom right. Then take your
+hand off the mouse.
 
-**DO:** click **She's back**.
+**SCREEN:** the clock runs from 08:00 to 13:00 in about fifteen seconds. The NOW line
+slides right across the four rows. The rows turn amber as each habit goes past its
+normal range. Three messages drop onto the phone, at roughly three, eight and fourteen
+seconds in.
 
-**VO:** "Tell it she's away and it stops raising alerts, but keeps learning. Every
-conversation after that knows. Tell it she's back and it starts watching again."
+**SAY, as it starts:** "So let the morning run. Nobody has got up. No hallway, no front
+door, no kettle."
 
-### 2:10 – 2:35 · Under the hood
+**SAY, as the first message lands:** "There is the first message. Not an alarm. One
+short line to her daughter, at work."
 
-**Screen:** terminal with MCP Inspector `tools/list` output, five tools visible. Then
-the MCP Apps reference host showing the timeline view (see *MCP Apps shot* below).
+**SAY, as the others land:** "It says it again only when it gets worse. Three messages
+across five hours, not sixteen."
 
-**VO:** "StillThere is a real MCP server on AWS, speaking the 2025-11-25 spec over
-Streamable HTTP. Here's the standard MCP Inspector listing its five tools. It also
-ships its own screen as an MCP App, here in the official reference host, which is how
-an Echo Show would draw it. The model only chooses the tool; the words come from the
-server, so it can't invent facts about anybody's mother."
+**DO:** move the cursor onto the top message and leave it there.
 
-### 2:35 – 2:50 · Honest close
+**SAY:** "That is all she gets. What is missing, when it was expected, how unusual that
+is for her. It never guesses at why. It will not say she may have fallen."
 
-**Screen:** back to the app at 12:30.
+> This is the hero shot. It is the only moment that shows time, absence and consequence
+> in one continuous take, which is why it is worth fifteen seconds of a three minute
+> video. Do not narrate over the whole thing; leave a beat of silence as each message
+> lands.
 
-**VO:** "The Echo Show here is simulated, because Alexa+ developer tools aren't open to
-hackathon entrants yet. Everything behind it is real, and built to Amazon's Alexa+ MCP
-requirements. For a family, setting it up is: link the cameras, Mum agrees, two weeks
-of learning. Then you can just ask. StillThere."
+### 1:18 to 1:50 · The part that matters: ask it why
 
-## After recording
+**DO:** click the **microphone** and say, clearly: *"Why did you message me?"*
 
-- [ ] Trim to under 3:00. Check the audio of the spoken replies is audible.
-- [ ] Watch it once at full screen for anything sensitive: access code, AWS console,
-      email notifications, other tabs.
-- [ ] Upload to **YouTube as Public** (the rules say publicly visible; unlisted is a
-      risk). No music unless you hold the rights to it.
-- [ ] Title: *StillThere: notices the things that didn't happen (Alexa+ / MCP)*.
-      Put the live link and the repo in the description.
-- [ ] Paste the YouTube link into the Devpost form, and into the README under *Try it*.
+**SCREEN:** the device answers out loud and the card changes to the exact message that
+was sent, with a list of the habits that were missing.
+
+**SAY, once it has finished speaking:** "It is not writing that explanation now. It is
+recalling the message it actually sent, and the habits that were missing."
+
+**DO:** point the cursor at the small grey line under the input box.
+
+**SAY:** "Bedrock picked the tool, the MCP server answered. A system that cannot tell
+you why it rang you is one you stop trusting."
+
+### 1:50 to 2:10 · It remembers
+
+**DO:** click the microphone and say *"She's away next week."* Wait for the reply, then
+click the **"She's back"** chip.
+
+**SCREEN:** it confirms monitoring is paused until a date, then confirms it is watching
+again.
+
+**SAY:** "Tell it she is away and it stops raising alerts, but keeps recording so the
+routine is not lost. Tell it she is back and it starts watching."
+
+### 2:10 to 2:35 · Underneath
+
+**DO:** switch to the terminal already showing the MCP Inspector tool list. Hold for
+three seconds. Then switch to the MCP App screenshot or the reference host window.
+
+**SAY:** "Underneath this is a real MCP server on AWS. Streamable HTTP, five tools, on
+the current spec. That is the standard MCP Inspector listing them from the live
+endpoint. It ships its own screen too, as an MCP App, so an Echo Show can draw this."
+
+**SAY:** "The model only picks the tool. The words come from the server, so it cannot
+invent something about somebody's mother. And it checks the cameras were working before
+it calls anything missing. A flat battery and an unconscious person look the same from
+outside, and one of those is a maintenance job."
+
+### 2:35 to 2:50 · Honest close
+
+**DO:** switch back to the browser.
+
+**SAY:** "The Echo Show here is simulated, because the Alexa+ developer tools are not
+open to entrants yet. Everything behind it is real. For a family it is: link the
+cameras, Mum agrees, a fortnight of learning. Then you can just ask. StillThere."
+
+---
+
+## Part 5: after recording
+
+- [ ] Trim to under 3:00. Check the spoken replies are audible.
+- [ ] Watch it full screen once, looking for anything sensitive: the access code, an AWS
+      console, a mail notification, another tab.
+- [ ] Upload to **YouTube as Public**. The rules say publicly visible, so unlisted is a
+      risk. No music unless you hold the rights.
+- [ ] Title: *StillThere: notices the things that didn't happen (Alexa+ / MCP)*. Put the
+      live link and the repo in the description.
+- [ ] Paste the link into the Devpost form, and into the README under *Try it*.
 
 ## If something goes wrong mid-take
 
-- **Speech isn't recognised:** type the question instead. It goes through the same
-  path, so nothing about the demo changes.
-- **"Monitoring is paused" when you don't expect it:** a previous take left a pause.
-  Click **She's back**, then start again.
-- **The phone is empty at 12:30:** the reset did not run today. Invoke it by hand (see
-  the first checklist item) and reload.
-- **A slow first answer:** that's a cold start, around a second and a half. Do a warm-up
-  question before you hit record.
+- **Speech is not recognised:** type the question instead. It is the same code path, so
+  nothing about the demo changes.
+- **It says monitoring is paused when you do not expect it:** a previous take left a
+  pause. Click **She's back**, reload, and start again.
+- **The phone is empty at 12:30:** the nightly reset did not run today. See the checklist.
+- **The first answer is slow:** that is a cold start, about a second and a half. Ask one
+  throwaway question before you record.
+- **The play button runs past the end:** it stops at 13:00 on its own. To replay, drag
+  the slider back to 08:00 and press play again.
