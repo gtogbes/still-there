@@ -151,7 +151,7 @@ function explainCard(data: ExplainData): string {
     )
     .join('');
   return `<section class="card tone-overdue" aria-label="Why you were messaged">
-    <p class="eyebrow">Sent at ${data.sentAtMinute === null ? '—' : hhmm(data.sentAtMinute)}</p>
+    <p class="eyebrow">Sent at ${data.sentAtMinute === null ? 'an unknown time' : hhmm(data.sentAtMinute)}</p>
     ${data.message === null ? '' : `<blockquote>“${escapeHtml(data.message)}”</blockquote>`}
     <table><caption>Habits that had not happened when the message was sent</caption>
       <thead><tr><th>Habit</th><th>Usually by</th><th>Late by</th><th class="r">Held on</th></tr></thead>

@@ -33,25 +33,39 @@ export function Phone({
     .sort((a, b) => b.sentAtMinute - a.sentAtMinute);
 
   return (
-    <div className="w-[330px] rounded-[46px] bg-[#121216] p-3 shadow-[0_30px_60px_-20px_rgba(43,36,24,0.5)]">
-      <div className="relative flex h-[560px] flex-col overflow-hidden rounded-[36px] bg-gradient-to-b from-[#3a2f4f] via-[#2a2440] to-[#1c1a2e] px-4 pt-3">
-        <div className="mx-auto h-7 w-28 rounded-full bg-black" aria-hidden />
+    <div className="shell w-full max-w-[300px] rounded-[40px] p-2.5 sm:max-w-[330px] sm:rounded-[46px] sm:p-3">
+      <div
+        className={`glass relative flex flex-col overflow-hidden rounded-[32px] bg-gradient-to-b from-[#3a2f4f] via-[#2a2440] to-[#1c1a2e] px-3.5 pt-3 transition-[height] duration-500 sm:rounded-[36px] sm:px-4 ${
+          visible.length === 0 ? 'h-[340px] sm:h-[420px]' : 'h-[508px] sm:h-[560px]'
+        }`}
+      >
+        <div className="mx-auto h-6 w-24 rounded-full bg-black sm:h-7 sm:w-28" aria-hidden />
         {/* The lock-screen clock gives way once messages stack up, so all of them fit. */}
         <p
           className={`text-center leading-none font-light text-white tabular-nums transition-all duration-500 ${
-            visible.length >= 3 ? 'mt-3 text-[40px]' : 'mt-6 text-[56px]'
+            visible.length >= 3 ? 'mt-3 text-[34px] sm:text-[40px]' : 'mt-5 text-[46px] sm:mt-6 sm:text-[56px]'
           }`}
         >
           {hhmm(minute)}
         </p>
-        <p className="mt-2 text-center text-sm text-[#d8cfea]">{dateLabel}</p>
+        <p className="mt-1.5 text-center text-[13px] text-[#d8cfea] sm:mt-2 sm:text-sm">{dateLabel}</p>
 
-        <ul className="mt-5 min-h-0 flex-1 space-y-2 overflow-hidden" aria-label="Notifications" aria-live="polite">
+        {/*
+          Scrolls rather than clips. Three stacked messages plus the lock-screen
+          clock do not fit a phone-sized viewport, and the third was cut in half.
+        */}
+        <ul
+          className="chip-row mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pb-1 [mask-image:linear-gradient(to_bottom,#000_calc(100%-1.25rem),transparent)] sm:mt-5"
+          aria-label="Notifications"
+          aria-live="polite"
+        >
           {visible.length === 0 && <li className="mt-6 text-center text-xs text-[#b8aed0]">No notifications</li>}
           {visible.map((n, i) => (
             <li
               key={n.sentAtMinute}
-              className={`animate-slide-down rounded-2xl bg-white/90 p-3.5 shadow-lg ${i > 0 ? 'opacity-70' : ''}`}
+              className={`animate-slide-down rounded-2xl bg-white/92 p-3 shadow-[0_8px_20px_-8px_rgba(0,0,0,0.5)] backdrop-blur-sm sm:p-3.5 ${
+                i > 0 ? 'opacity-70' : ''
+              }`}
             >
               <div className="flex items-center gap-2">
                 <span className="grid h-5 w-5 place-items-center rounded-md bg-[#4b3f8f] text-[10px] font-bold text-white" aria-hidden>

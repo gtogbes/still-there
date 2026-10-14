@@ -408,7 +408,7 @@ export function householdStatus(
       : '';
 
   const detail =
-    `Usually by ${hhmm(worst.medianMinute)}, and it's ${hhmm(minutesOfDay)} — ` +
+    `Usually by ${hhmm(worst.medianMinute)}, and it's ${hhmm(minutesOfDay)}, ` +
     `${describeLateness(worst.minutesOverdue)}.${others} ` +
     `That habit held on ${worst.presentDays} of the last ${worst.observedDays} comparable days.`;
 
@@ -592,7 +592,7 @@ export function describeRoutine(
     text:
       `On a working day, ${name ?? 'she'} is usually ${clauses.join(', ')}${clauses.length > 0 ? ', and ' : ''}${last}. ` +
       `That's learned from ${baseline.daysObserved} days, not set by anyone. ` +
-      `I only watch for habits that hold on more than nineteen days in twenty — anything less reliable than that isn't a habit, and alerting on it would just be noise.`,
+      `I only watch for habits that hold on more than nineteen days in twenty. Anything less reliable than that isn't a habit, and alerting on it would just be noise.`,
     data,
   };
 }
@@ -648,7 +648,7 @@ export function endSuppressions(
     answer: {
       text: wasPaused
         ? "Welcome back. I'm watching again from now."
-        : "Monitoring wasn't paused, so nothing has changed — I'm already watching.",
+        : "Monitoring wasn't paused, so nothing has changed. I'm already watching.",
       data: { kind: 'resumed', wasPaused },
     },
   };

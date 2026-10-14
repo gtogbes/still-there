@@ -21,7 +21,7 @@ function Shell({ bar, children, label }: { bar: string; children: React.ReactNod
   return (
     <section
       aria-label={label}
-      className="animate-rise relative overflow-hidden rounded-2xl border border-screen-600/70 bg-screen-700/60 px-6 py-5 backdrop-blur"
+      className="animate-rise relative overflow-hidden rounded-2xl border border-screen-600/70 bg-screen-700/60 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur sm:px-6 sm:py-5"
     >
       <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${bar}`} aria-hidden />
       {children}
@@ -31,6 +31,11 @@ function Shell({ bar, children, label }: { bar: string; children: React.ReactNod
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
+}
+
+/** Spoken-style lateness: minutes while that is small, then hours. */
+function lateBy(minutes: number): string {
+  return minutes < 60 ? `${minutes} min` : `${Math.round(minutes / 30) / 2} h`;
 }
 
 export function StatusCard({ data }: { data: StatusData }) {
@@ -46,10 +51,12 @@ export function StatusCard({ data }: { data: StatusData }) {
 
   return (
     <Shell bar={style.bar} label="Today">
-      <div className="flex items-baseline justify-between gap-4">
-        <p className={`text-xs font-semibold tracking-[0.14em] uppercase ${style.tone}`}>{style.label}</p>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className={`text-[11px] font-semibold tracking-[0.12em] uppercase sm:text-xs ${style.tone}`}>
+          {style.label}
+        </p>
         {reliable && data.state === 'overdue' && (
-          <p className="text-xs text-screen-300">
+          <p className="hidden shrink-0 text-xs text-screen-300 sm:block">
             Held on {reliable.presentDays} of the last {reliable.observedDays} {reliable.observedDays > 20 ? 'working' : 'comparable'} days
           </p>
         )}
@@ -61,7 +68,7 @@ export function StatusCard({ data }: { data: StatusData }) {
         <p className="mt-3 text-screen-100">{data.detail}</p>
       )}
 
-      <div className="mt-8 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-screen-400">
+      <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-screen-400 sm:mt-8 sm:gap-x-5 sm:text-[12px]">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-calm" aria-hidden /> happened
         </span>
@@ -69,10 +76,12 @@ export function StatusCard({ data }: { data: StatusData }) {
           <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-different" aria-hidden /> not yet
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-screen-400" aria-hidden /> not yet, still normal
+          <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-screen-400" aria-hidden />
+          <span className="hidden sm:inline">not yet, still normal</span>
+          <span className="sm:hidden">still normal</span>
         </span>
         {ignored > 0 && (
-          <span className="ml-auto">
+          <span className="w-full sm:ml-auto sm:w-auto">
             Not counted:{' '}
             {data.ignored.notAPerson > 0 && plural(data.ignored.notAPerson, 'movement that wasn’t a person', 'movements that weren’t a person')}
             {data.ignored.notAPerson > 0 && data.ignored.outside > 0 && ' · '}
@@ -91,11 +100,11 @@ export function RoutineCard({ data }: { data: RoutineData }) {
       <p className="text-xs font-semibold tracking-[0.14em] text-alexa uppercase">{who}&rsquo;s usual working day</p>
       <ol className="mt-4 space-y-3">
         {data.weekday.map((h) => (
-          <li key={h.key} className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-4">
-            <span className="text-2xl font-semibold text-white tabular-nums">{hhmm(h.usualMinute)}</span>
-            <span className="text-screen-100">{h.name}</span>
-            <span className="flex items-center gap-2 text-xs text-screen-300 tabular-nums">
-              <span className="relative h-1.5 w-20 overflow-hidden rounded-full bg-screen-600" aria-hidden>
+          <li key={h.key} className="grid grid-cols-[3.6rem_1fr_auto] items-center gap-3 sm:grid-cols-[4.5rem_1fr_auto] sm:gap-4">
+            <span className="text-xl font-semibold text-white tabular-nums sm:text-2xl">{hhmm(h.usualMinute)}</span>
+            <span className="truncate text-[15px] text-screen-100 sm:text-base">{h.name}</span>
+            <span className="flex items-center gap-2 text-[11px] text-screen-300 tabular-nums sm:text-xs">
+              <span className="relative hidden h-1.5 w-20 overflow-hidden rounded-full bg-screen-600 sm:block" aria-hidden>
                 <span className="absolute inset-y-0 left-0 rounded-full bg-calm" style={{ width: `${Math.round(h.reliability * 100)}%` }} />
               </span>
               {h.presentDays}/{h.observedDays} days
@@ -103,7 +112,7 @@ export function RoutineCard({ data }: { data: RoutineData }) {
           </li>
         ))}
       </ol>
-      <p className="mt-5 text-[13px] leading-relaxed text-screen-300">
+      <p className="mt-4 text-[12.5px] leading-relaxed text-screen-300 sm:mt-5 sm:text-[13px]">
         Learned from {data.daysObserved} days, not set by anyone. Only habits that hold on more than 19 days in 20 are watched — anything less reliable would just be noise.
       </p>
     </Shell>
@@ -123,18 +132,32 @@ export function ExplainCard({ data }: { data: ExplainData }) {
   return (
     <Shell bar="bg-different" label="Why you were messaged">
       <p className="text-xs font-semibold tracking-[0.14em] text-different uppercase">
-        Sent at {data.sentAtMinute === null ? '—' : hhmm(data.sentAtMinute)}
+        Sent at {data.sentAtMinute === null ? '--' : hhmm(data.sentAtMinute)}
       </p>
-      {data.message && <blockquote className="mt-3 border-l-2 border-screen-400 pl-4 text-lg leading-snug text-white">&ldquo;{data.message}&rdquo;</blockquote>}
+      {data.message && <blockquote className="mt-3 border-l-2 border-screen-400 pl-3 text-[15px] leading-snug text-white sm:pl-4 sm:text-lg">&ldquo;{data.message}&rdquo;</blockquote>}
 
-      <table className="mt-5 w-full text-sm">
+      {/* A phone has no room for four columns: the headings alone wrapped and the
+          reliability figures were cut off. Same facts, stacked, below sm. */}
+      <ul className="mt-4 space-y-2 sm:hidden">
+        {data.findings.map((f) => (
+          <li key={f.label} className="rounded-xl border border-screen-600/50 bg-screen-800/40 px-3 py-2">
+            <p className="text-[14px] font-medium text-screen-100">{f.name}</p>
+            <p className="mt-0.5 text-[12.5px] text-screen-300 tabular-nums">
+              usually by {hhmm(f.usualMinute)} · {lateBy(f.minutesOverdue)} late · held {f.presentDays}/
+              {f.observedDays}
+            </p>
+          </li>
+        ))}
+      </ul>
+
+      <table className="mt-5 hidden w-full text-sm sm:table">
         <caption className="sr-only">Habits that had not happened when the message was sent</caption>
         <thead>
           <tr className="text-left text-[11px] tracking-wider text-screen-400 uppercase">
             <th className="pb-2 font-medium">Habit</th>
             <th className="pb-2 font-medium">Usually by</th>
             <th className="pb-2 font-medium">Late by</th>
-            <th className="pb-2 text-right font-medium">Reliability</th>
+            <th className="pb-2 text-right font-medium">Held on</th>
           </tr>
         </thead>
         <tbody>
@@ -142,7 +165,7 @@ export function ExplainCard({ data }: { data: ExplainData }) {
             <tr key={f.label} className="border-t border-screen-600/60 text-screen-100">
               <td className="py-2">{f.name}</td>
               <td className="py-2 tabular-nums">{hhmm(f.usualMinute)}</td>
-              <td className="py-2 tabular-nums">{f.minutesOverdue < 60 ? `${f.minutesOverdue} min` : `${Math.round(f.minutesOverdue / 30) / 2} h`}</td>
+              <td className="py-2 tabular-nums">{lateBy(f.minutesOverdue)}</td>
               <td className="py-2 text-right tabular-nums">
                 {f.presentDays}/{f.observedDays}
               </td>
@@ -150,7 +173,7 @@ export function ExplainCard({ data }: { data: ExplainData }) {
           ))}
         </tbody>
       </table>
-      <p className="mt-4 text-[12px] text-screen-400">
+      <p className="mt-4 text-[11.5px] text-screen-400 sm:text-[12px]">
         {data.phrasedBy === 'bedrock' ? 'Worded by Amazon Bedrock, then checked before sending.' : 'Deterministic wording.'} It only flags something once it&rsquo;s later than her own normal range.
       </p>
     </Shell>
@@ -161,7 +184,7 @@ export function PauseCard({ data }: { data: PauseData }) {
   return (
     <Shell bar="bg-screen-400" label="Monitoring paused">
       <p className="text-xs font-semibold tracking-[0.14em] text-screen-300 uppercase">Paused for {data.days} {data.days === 1 ? 'day' : 'days'}</p>
-      <p className="mt-2 text-3xl font-semibold text-white">Until {formatDate(data.untilDateKey)}</p>
+      <p className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Until {formatDate(data.untilDateKey)}</p>
       <p className="mt-2 text-screen-300">Reason: {data.reason}. Activity is still recorded, so the routine won&rsquo;t be forgotten.</p>
     </Shell>
   );

@@ -41,7 +41,7 @@ function page(links: Links): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StillThere — notices the things that didn't happen</title>
+  <title>StillThere: notices the things that didn't happen</title>
   <meta name="description" content="StillThere learns an older relative's daily routine and tells family when the usual activity doesn't happen. Ask it on Alexa+.">
   <meta name="robots" content="noindex">
   <style>
@@ -73,9 +73,25 @@ function page(links: Links): string {
     body {
       font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       color: var(--ink); background: var(--bg);
-      margin: 0 auto; padding: 3rem 1.25rem 4rem; max-width: 46rem;
+      margin: 0 auto; padding: 2.25rem 1.1rem 3.5rem; max-width: 46rem;
+      background-image:
+        radial-gradient(42rem 28rem at 6% -6%, rgba(255, 244, 222, 0.85), transparent 62%),
+        radial-gradient(34rem 26rem at 96% 2%, rgba(214, 231, 248, 0.6), transparent 64%);
+      background-attachment: fixed;
+      -webkit-text-size-adjust: 100%;
     }
-    h1 { font-size: clamp(2rem, 5.5vw, 2.7rem); line-height: 1.1; margin: 0 0 .75rem; letter-spacing: -.025em; }
+    @media (min-width: 40em) { body { padding: 3rem 1.5rem 4rem; } }
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-image:
+          radial-gradient(42rem 28rem at 6% -6%, rgba(60, 52, 38, 0.6), transparent 62%),
+          radial-gradient(34rem 26rem at 96% 2%, rgba(32, 46, 64, 0.55), transparent 64%);
+      }
+    }
+    h1 {
+      font-size: clamp(1.8rem, 7.5vw, 2.7rem); line-height: 1.1;
+      margin: 0 0 .75rem; letter-spacing: -.025em; text-wrap: balance;
+    }
     .lede { font-size: 1.15rem; color: var(--muted); margin: 0 0 1.75rem; }
     h2 { font-size: 1.25rem; margin: 3rem 0 .75rem; letter-spacing: -.01em; }
     h3 { font-size: 1rem; margin: 1.25rem 0 .25rem; }
@@ -87,29 +103,50 @@ function page(links: Links): string {
       border: 1px solid var(--line); border-radius: 100px;
       padding: .2rem .75rem; margin-bottom: 1.25rem;
     }
-    .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin: 0 0 .75rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 0 0 .75rem; }
     .button {
-      display: inline-block; padding: .7rem 1.2rem; border-radius: 100px;
+      display: block; flex: 1 1 14rem; text-align: center;
+      padding: .8rem 1.2rem; border-radius: 100px;
       font-weight: 600; text-decoration: none; border: 1px solid var(--ink);
+      transition: transform .12s ease, box-shadow .2s ease;
     }
-    .button.primary { background: var(--ink); color: var(--bg); }
+    .button:active { transform: scale(.985); }
+    .button.primary {
+      background: var(--ink); color: var(--bg);
+      box-shadow: 0 10px 24px -10px rgba(40, 32, 20, .55);
+    }
+    @media (min-width: 40em) { .button { flex: 0 0 auto; display: inline-block; } }
     .button.secondary { color: var(--ink); }
     .button:focus-visible, a:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
     .note { font-size: .9rem; color: var(--muted); margin: 0; }
 
     /* A small, static rendition of the Echo Show screen. Nothing here is live. */
     .screen {
-      background: var(--screen); color: var(--screen-ink);
-      border: 10px solid #1b1b1f; border-radius: 22px;
-      padding: 1.4rem 1.5rem 1.5rem; margin: 2rem 0 .5rem;
+      background: linear-gradient(145deg, #142544, var(--screen) 55%);
+      color: var(--screen-ink);
+      border: 8px solid #1b1b1f; border-radius: 20px;
+      padding: 1.15rem 1.15rem 1.3rem; margin: 1.75rem 0 .5rem;
+      box-shadow:
+        inset 0 0 0 1px rgba(146, 180, 222, .16),
+        inset 0 18px 40px -26px rgba(214, 238, 255, .35),
+        0 24px 50px -22px rgba(40, 32, 20, .45);
     }
+    @media (min-width: 40em) {
+      .screen { border-width: 10px; border-radius: 22px; padding: 1.4rem 1.5rem 1.5rem; margin-top: 2rem; }
+    }
+    .screen .said { text-wrap: balance; }
     .screen .asked { color: var(--screen-muted); font-style: italic; margin: 0 0 .4rem; }
     .screen .said { font-size: 1.2rem; font-weight: 600; line-height: 1.35; margin: 0 0 .5rem; }
     .screen .detail { color: var(--screen-muted); margin: 0; }
     .screen .heard { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; background: var(--alexa); margin-right: .45rem; }
     .caption { font-size: .85rem; color: var(--muted); margin: 0 0 1rem; }
 
-    .card { border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.35rem; background: var(--card); margin: 1rem 0; }
+    .card {
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 1rem 1.1rem; background: var(--card); margin: 1rem 0;
+      box-shadow: 0 10px 28px -18px rgba(40, 32, 20, .3);
+    }
+    @media (min-width: 40em) { .card { padding: 1.1rem 1.35rem; } }
     .phone {
       border-left: 3px solid var(--amber); background: var(--card);
       border-radius: 10px; padding: .85rem 1.1rem; margin: .75rem 0; font-size: .97rem;
@@ -129,6 +166,12 @@ function page(links: Links): string {
     ul.plain li { margin: .4rem 0; }
     table { width: 100%; border-collapse: collapse; font-size: .95rem; }
     th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    @media (max-width: 34em) {
+      table, tbody, tr, th, td { display: block; }
+      th[scope="row"] { border: 0; padding-bottom: 0; }
+      td { padding-top: .15rem; }
+      tr { padding: .35rem 0; border-bottom: 1px solid var(--line); }
+    }
     th { font-weight: 600; color: var(--muted); font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
     code { font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--card); border: 1px solid var(--line); border-radius: 5px; padding: .05rem .35rem; white-space: nowrap; display: inline-block; margin: .1rem 0; }
     code.url { white-space: normal; word-break: break-all; display: inline; }
@@ -181,7 +224,7 @@ function page(links: Links): string {
       <li>
         <h3>It learns the routine</h3>
         <p class="quiet">
-          Over a few weeks it works out the shape of an ordinary day &mdash; up and about
+          Over a few weeks it works out the shape of an ordinary day: up and about
           by half seven, out of the front door by ten to eight, in the kitchen by quarter
           past. It only treats something as a habit if it holds on more than nineteen
           days in twenty. Anything less reliable would just be noise.
@@ -190,8 +233,8 @@ function page(links: Links): string {
       <li>
         <h3>It watches for what&rsquo;s missing</h3>
         <p class="quiet">
-          Once a habit is later than this person&rsquo;s own normal range &mdash; not a fixed
-          schedule &mdash; it sends one short message. If the morning gets worse it says so
+          Once a habit is later than this person&rsquo;s own normal range, rather than a
+          fixed schedule, it sends one short message. If the morning gets worse it says so
           again, at most three times a day.
         </p>
         <div class="phone">
@@ -275,13 +318,13 @@ function page(links: Links): string {
       apps. Ring revokes our access immediately and tells us it has done so.
     </p>
     <p>
-      When that message arrives we <strong>delete everything</strong> &mdash; the access
+      When that message arrives we <strong>delete everything</strong>: the access
       tokens, the event history, the learned routine, the room assignments and the
       record of past notifications. Not marked for expiry. Deleted.
     </p>
     <h3>What we keep while you&rsquo;re connected</h3>
     <ul class="plain">
-      <li>Event records &mdash; which device, what kind of movement, when. Deleted after 90 days regardless.</li>
+      <li>Event records: which device, what kind of movement, when. Deleted after 90 days regardless.</li>
       <li>Which room each device is in, so movement indoors can be told from movement outside.</li>
       <li>Encrypted access tokens for your Ring account.</li>
       <li>A record of each message sent, so &ldquo;why did you contact me that Tuesday&rdquo; has an answer.</li>

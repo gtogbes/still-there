@@ -80,14 +80,14 @@ export function App() {
   const card: Card | null = showingAnswer ? (answer.card ?? (answer.speech ? null : ambient.status)) : ambient.status;
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-room-50 to-room-200">
-      <header className="mx-auto flex max-w-[1500px] items-center justify-between px-8 pt-7">
-        <div className="flex items-baseline gap-3">
-          <span className="text-2xl font-bold tracking-tight text-room-800">StillThere</span>
-          <span className="text-room-600">on Alexa+</span>
+    <div className="min-h-full">
+      <header className="mx-auto flex max-w-[1500px] items-center justify-between gap-3 px-4 pt-5 sm:px-8 sm:pt-7">
+        <div className="flex shrink-0 items-baseline gap-2 whitespace-nowrap sm:gap-3">
+          <span className="text-xl font-bold tracking-tight text-room-800 sm:text-2xl">StillThere</span>
+          <span className="text-sm text-room-600 sm:text-base">on Alexa+</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden rounded-full border border-room-200 bg-white/70 px-3 py-1 text-xs text-room-600 md:inline">
+          <span className="hidden rounded-full border border-room-200 bg-white/70 px-3 py-1 text-xs text-room-600 lg:inline">
             Simulated Alexa+ device · answers come from the live StillThere MCP server
           </span>
           <button
@@ -97,15 +97,19 @@ export function App() {
               setVoiceOn((v) => !v);
             }}
             aria-pressed={voiceOn}
-            className="rounded-full border border-room-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-room-800 transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-room-800"
+            className="shrink-0 rounded-full border border-room-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-room-800 transition active:scale-95 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-room-800"
           >
-            {voiceOn ? 'Spoken replies on' : 'Spoken replies off'}
+            <span className="sm:hidden">{voiceOn ? 'Voice on' : 'Voice off'}</span>
+            <span className="hidden sm:inline">{voiceOn ? 'Spoken replies on' : 'Spoken replies off'}</span>
           </button>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-[1500px] grid-cols-1 gap-8 px-8 py-6 lg:grid-cols-[minmax(0,1fr)_330px]">
+      <main className="mx-auto grid max-w-[1500px] grid-cols-1 gap-5 px-4 py-5 sm:gap-8 sm:px-8 sm:py-6 lg:grid-cols-[minmax(0,1fr)_330px]">
         <h1 className="sr-only">StillThere, a simulated Alexa+ experience</h1>
+        <p className="text-sm text-room-600 lg:hidden">
+          A simulated Alexa+ device. Every answer comes from the live StillThere MCP server.
+        </p>
         <EchoShow
           dayLabel={dayLabel}
           minute={minute}
@@ -120,11 +124,20 @@ export function App() {
           onMic={() => (listening.listening ? listening.stop() : listening.start())}
           onAsk={(t) => void onAsk(t)}
         />
+        {/*
+          The clock comes first on a phone. It is the control the whole demo turns on,
+          and below the device it sat a long scroll past the fold, where a visitor who
+          never scrolled would see a single frozen moment and assume that was all.
+        */}
         <div className="flex flex-col items-center gap-3">
-          <Phone minute={minute} dateLabel={dateLabel} notifications={ambient.notifications} />
-          <p className="text-center text-sm text-room-600">Jasmine&rsquo;s daughter&rsquo;s phone</p>
-          <DemoClock minute={minute} playing={playing} onChange={setMinute} onPlayingChange={setPlaying} />
-          {ambient.error && <p className="text-sm text-[#a3481d]">{ambient.error}</p>}
+          <div className="order-1 flex w-full flex-col items-center lg:order-2">
+            <DemoClock minute={minute} playing={playing} onChange={setMinute} onPlayingChange={setPlaying} />
+          </div>
+          <div className="order-2 flex w-full flex-col items-center gap-3 lg:order-1">
+            <Phone minute={minute} dateLabel={dateLabel} notifications={ambient.notifications} />
+            <p className="text-center text-sm text-room-600">Jasmine&rsquo;s daughter&rsquo;s phone</p>
+          </div>
+          {ambient.error && <p className="order-3 text-sm text-[#a3481d]">{ambient.error}</p>}
         </div>
       </main>
 

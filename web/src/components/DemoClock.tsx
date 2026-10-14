@@ -46,7 +46,7 @@ export function DemoClock({
   }, [playing, onChange, onPlayingChange]);
 
   return (
-    <section aria-label="Demo clock" className="w-[330px] rounded-2xl border border-room-200 bg-white/75 px-5 py-4 shadow-sm backdrop-blur">
+    <section aria-label="Demo clock" className="w-full max-w-[330px] rounded-2xl border border-room-200/80 bg-white/80 px-4 py-4 shadow-[0_10px_30px_-14px_rgba(50,42,30,0.35)] backdrop-blur sm:px-5">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -94,7 +94,7 @@ export function DemoClock({
               onPlayingChange(false);
               onChange(p.minute);
             }}
-            className={`rounded-full py-1.5 text-sm font-medium tabular-nums transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-room-800 ${
+            className={`rounded-full py-2 text-sm font-medium tabular-nums transition active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-room-800 sm:py-1.5 ${
               minute === p.minute ? 'bg-room-800 text-white' : 'bg-room-100 text-room-800 hover:bg-room-200'
             }`}
           >
