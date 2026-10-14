@@ -93,6 +93,17 @@ each habit is, which is the honest answer to *what do you actually watch for*:
 
 ![The learned routine, with reliability per habit](docs/screenshots/05-normal-day.png)
 
+### On a phone
+
+Most people will open this on a phone, so the layout is built for one. The timeline
+gives each habit a full-width track with the NOW line drawn through it, the demo clock
+sits directly under the device rather than below a long scroll, and the explanation
+becomes a stacked list instead of a four-column table that cannot fit.
+
+| Lunchtime, three messages sent | "Why did you message me?" |
+|---|---|
+| ![StillThere on a phone, escalated](docs/screenshots/07-mobile-escalated.png) | ![The explanation on a phone](docs/screenshots/08-mobile-explain.png) |
+
 ## The MCP server
 
 StillThere is an MCP server first. The web app is one client; your assistant can be
