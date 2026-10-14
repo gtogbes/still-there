@@ -12,7 +12,7 @@ what the live app shows after the nightly reset.
       `AWS_PROFILE=gt aws lambda invoke --function-name still-there-dev-demo-reset /tmp/r.json`
 - [ ] **Chrome**, a fresh window at about 1500 × 1000, zoom 100%, bookmarks bar hidden,
       no other tabs. Speech recognition only works in Chrome.
-- [ ] Use **https://stillthere.ogbes.com**, not the `.cloudfront.net` address — the
+- [ ] Use **https://stillthere.ogbes.com**, not the `.cloudfront.net` address, because the
       address bar is on screen for the whole video.
 - [ ] Enter the access code **before** you start recording. It is remembered in the browser.
 - [ ] Top right: **Spoken replies on**.
@@ -118,7 +118,7 @@ of learning. Then you can just ask. StillThere."
       email notifications, other tabs.
 - [ ] Upload to **YouTube as Public** (the rules say publicly visible; unlisted is a
       risk). No music unless you hold the rights to it.
-- [ ] Title: *StillThere — notices the things that didn't happen (Alexa+ / MCP)*.
+- [ ] Title: *StillThere: notices the things that didn't happen (Alexa+ / MCP)*.
       Put the live link and the repo in the description.
 - [ ] Paste the YouTube link into the Devpost form, and into the README under *Try it*.
 

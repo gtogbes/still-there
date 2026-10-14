@@ -1,6 +1,6 @@
 # StillThere
 
-**Ask Alexa+ how your mum's morning went — and get told when it didn't happen.**
+**Ask Alexa+ how your mum's morning went, and get told when it didn't happen.**
 
 StillThere learns an older person's daily rhythm and notices the activity that
 **didn't** happen. Then it explains itself, out loud, when the family asks why.
@@ -18,7 +18,7 @@ Built for the Alexa+ track of the Build, Ship, Shape: Amazon Developer Hackathon
 
 ## The idea
 
-A camera or a contact sensor already records the shape of someone's day — door opened
+A camera or a contact sensor already records the shape of someone's day: door opened
 at 08:10, movement in the hallway, someone in the kitchen by half past. Normally those
 events exist to tell you a stranger is outside. StillThere uses them backwards.
 
@@ -46,7 +46,7 @@ Three reasons, and the third is the one that matters.
 
 **Checking in is a question, not an app.** Nobody opens a dashboard to find out their
 mother is fine. They wonder aloud in the kitchen. The natural shape of this product is
-a question asked into the room — which is what Alexa+ is for, and which an app icon on
+a question asked into the room, which is what Alexa+ is for, and which an app icon on
 a phone will never be.
 
 **The hard part is the explaining, and that is exactly what an assistant is good at.**
@@ -56,7 +56,7 @@ line. Families stop trusting alerts they cannot interrogate.
 
 **The person who needs reassuring is the one least able to go and get it.** A daughter
 at work, a son in another country. Asking is free. Opening an app, remembering a
-password and reading a chart is not, and so it does not happen daily — which is
+password and reading a chart is not, and so it does not happen daily, which is
 precisely the frequency at which this kind of monitoring is worth anything.
 
 ## Try it
@@ -68,10 +68,10 @@ MCP server over the public internet; nothing on the page is scripted.
    not just the page, and it fails closed.
 2. **Move the demo clock** (bottom right: 08:00 · 09:30 · 11:00 · 12:30). Watch the
    screen change state and the daughter's phone fill up with the messages that were
-   actually sent today. These moved the time of day only — it is still really today.
+   actually sent today. These moved the time of day only. It is still really today.
 3. **Tap a suggested question**, or press the microphone and ask in your own words.
    Bedrock picks the tool; the answer is the tool's own text.
-4. Try **"she's away next week"**, then **"she's back"** — those write to the live
+4. Try **"she's away next week"**, then **"she's back"**. Those write to the live
    household and change what the other answers say.
 
 **Use Chrome** if you want to talk to it. Speech recognition in the browser is
@@ -79,11 +79,11 @@ Chrome-only. Typing works everywhere, and spoken replies can be switched off top
 
 ### The three states, in order
 
-| 08:00 — nothing is wrong yet | 09:30 — the first nudge | 12:30 — worth a call |
+| 08:00, nothing is wrong yet | 09:30, the first nudge | 12:30, worth a call |
 |---|---|---|
 | ![](docs/screenshots/01-0800-nothing-due.png) | ![](docs/screenshots/02-0930-overdue.png) | ![](docs/screenshots/03-1230-escalated.png) |
 
-At 08:00 Jasmine's usual 07:30 has already passed, and the screen says so — *a later
+At 08:00 Jasmine's usual 07:30 has already passed, and the screen says so: *a later
 start is still within her normal range*. Saying "nothing is overdue" there would be
 true and useless. Severity escalates low → medium → high as the morning goes on, and
 the phone stacks each message as it is sent.
@@ -107,7 +107,7 @@ assistant and a display device without either compromising.
 | `still_there_status` | "is Mum up yet", "is everything alright", "any news" | no |
 | `explain_last_alert` | "why did you message me", "what was that about" | no |
 | `describe_routine` | "what does a normal day look like for her" | no |
-| `pause_monitoring` | "she's away this week" — asks how many days if unclear | yes |
+| `pause_monitoring` | "she's away this week" (asks how many days if unclear) | yes |
 | `resume_monitoring` | "she's back", "start watching again" | yes |
 
 No tool returns raw events, device identifiers or images.
@@ -134,16 +134,16 @@ curl -s https://eop88u898f.execute-api.us-east-1.amazonaws.com/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-The server advertises protocol `2025-11-25` and runs in a single Lambda — the SDK's
+The server advertises protocol `2025-11-25` and runs in a single Lambda: the SDK's
 `McpServer` behind a stateless Streamable HTTP transport, one request per invocation.
 
 ### Checked against the Alexa+ MCP requirements
 
 Alexa+'s own MCP Toolkit and simulator are partner-only for now, and the hackathon
 FAQ confirms entrants cannot get access. So we did the step Amazon recommends before
-the simulator — validating the server in isolation with the standard
-[MCP Inspector](https://github.com/modelcontextprotocol/inspector) — and checked it
-against the published requirements one by one:
+the simulator: validating the server in isolation with the standard
+[MCP Inspector](https://github.com/modelcontextprotocol/inspector). Then we checked
+it against the published requirements one by one:
 
 | Alexa+ requirement | StillThere |
 |---|---|
@@ -239,7 +239,7 @@ better said by us than discovered by a reviewer.
   history. See below. Every night at 00:05 London time a scheduled job
   (`src/handlers/demo-reset.ts`) rebuilds her six weeks and today's missing morning,
   then runs the *deployed* assessment at 09:00, 10:45 and 12:30, so the three messages
-  are produced the real way — Bedrock, validation, SNS — and the demo tells the same
+  are produced the real way (Bedrock, validation, SNS), and the demo tells the same
   story whichever day it is opened. It refuses to run unless the deployment is marked
   as a demo.
 - **The clock, within today.** The demo clock moves the *time of day* and nothing else.
@@ -249,7 +249,7 @@ better said by us than discovered by a reviewer.
 ### Why the events are synthetic
 
 **No Ring account has ever been linked to this app, and no physical device was used.**
-Not a shortcut taken for convenience — Ring private apps connect real accounts, and
+Not a shortcut taken for convenience. Ring private apps connect real accounts, and
 [each connected account needs an active Ring Protect Plan or trial](https://developer.amazon.com/docs/ring/developer-faq.html)
 for device access. We had neither the hardware nor the subscription, and the Playground,
 as far as we could determine, does not deliver events to a registered webhook URL, so
@@ -291,7 +291,7 @@ Worth stating plainly, because it shapes what is actually new here.
   professionally fitted sensor kit, a panel, a dealer and a monitoring subscription.
 - **Amazon built and then withdrew it.** Alexa Care Hub (2020) became the Alexa
   Together subscription, discontinued in May 2025 and replaced by Alexa Emergency
-  Assist — a *reactive* service where someone has to ask for help.
+  Assist, a *reactive* service where someone has to ask for help.
 - There is twenty years of academic work on activity-of-daily-living anomaly detection
   behind both.
 
@@ -303,7 +303,7 @@ So the concept is not novel. Four things about this delivery are:
 2. **The alert explains itself, conversationally.** Traditional systems cross a
    threshold and emit "unusual activity detected". Families stop trusting those, then
    stop reading them. Every finding here names the habit, the time it was expected, and
-   how consistent it has been — and will answer follow-up questions about it.
+   how consistent it has been, and will answer follow-up questions about it.
 3. **The assistant cannot invent the facts.** The model routes and nothing else. See
    below; this is the part most voice integrations get wrong.
 4. **Zero new hardware, in principle.** It runs on consumer devices people already own
@@ -313,7 +313,7 @@ So the concept is not novel. Four things about this delivery are:
 
 Two halves. One watches and notices; the other answers questions about what it noticed.
 
-**The watching half** — runs whether anybody is asking or not:
+**The watching half**, which runs whether anybody is asking or not:
 
 ```
 events ──▶ verify HMAC ──▶ classify ──▶ dedupe ──▶ DynamoDB
@@ -330,7 +330,7 @@ every 15 min ──▶ learn baseline (42 days, excluding today)
                       └─ device health
 ```
 
-**The asking half** — the MCP server, and two clients for it:
+**The asking half**: the MCP server, and two clients for it:
 
 ```
                       ┌─ /api/assistant ─▶ Bedrock picks a tool ─┐
@@ -349,15 +349,15 @@ caching disabled. The page itself is S3 behind OAC with a strict CSP and bundled
 
 `/api/assistant` passes the utterance and the live `tools/list` output to Nova Lite and
 asks it to pick a tool. The **spoken reply is the MCP tool's own deterministic text**,
-not the model's prose. So the assistant can misroute a question — and the worst case is
+not the model's prose. So the assistant can misroute a question, and the worst case is
 a correct answer to the wrong question, never a confident invention about someone's
 mother.
 
 A keyword router sits behind it and takes over if Bedrock is unavailable, denied or
 slow. The feature degrades to a slightly stupider router. It does not go down.
 
-Routing costs one Nova Lite call per spoken question, and the ambient view costs none —
-the screen reads MCP directly, so moving the clock is free. That is a cost decision as
+Routing costs one Nova Lite call per spoken question, and the ambient view costs nothing,
+because the screen reads MCP directly, so moving the clock is free. That is a cost decision as
 much as a correctness one.
 
 ### Six design decisions that carry the weight
@@ -373,7 +373,7 @@ three-minute video would have been fatal.
 
 **Not all events are occupancy evidence.** A doorbell facing the street fires on passing
 cars and the postman. If exterior motion counted as occupancy, the system would report a
-normal morning for a house nobody had got out of bed in — the most dangerous false
+normal morning for a house nobody had got out of bed in, the most dangerous false
 negative available. Only interior movement, or a door physically opening, counts.
 
 **And not all interior movement is a person.** Motion is classified `human`, `vehicle`
@@ -390,7 +390,7 @@ completely. Households with a contact sensor get defence in depth for free.
 **A flat battery and an unconscious person produce identical data: silence.** Every
 missing-activity finding is checked against device health first. If the camera was
 offline, flat, or quietly stale, the finding becomes `unobservable` and routes to
-maintenance — never to the family as a welfare alert. This is the single correctness
+maintenance, never to the family as a welfare alert. This is the single correctness
 question in the product.
 
 **Deadlines come from the late edge of what this household actually does.** The 95th
@@ -399,7 +399,7 @@ multiplier. Most mornings cluster tightly and then straggle, so a symmetric mode
 a regular household a hair-trigger and an irregular one a deadline that never arrives.
 
 **One message, then only on escalation.** The assessment runs every 15 minutes, and an
-early version sent a message — and made a Bedrock call — on every single run of a bad
+early version sent a message, and made a Bedrock call, on every single run of a bad
 morning. The family would have had sixteen texts by lunchtime. `src/notify/policy.ts`
 now sends once the first time something is wrong today, then only when severity
 actually escalates: at most three messages a day, which is exactly what the phone in
@@ -407,7 +407,7 @@ the screenshot shows.
 
 **Withdrawing consent erases everything.** When the integration is removed, the tokens,
 activity history, learned routine, room assignments and record of past notifications
-are all deleted. Not marked for expiry — deleted. Letting the 90-day TTL handle it
+are all deleted. Not marked for expiry. Deleted. Letting the 90-day TTL handle it
 would be defensible and would also mean keeping months of somebody's movements after
 they asked us to stop. Expiry is not erasure.
 
@@ -425,7 +425,7 @@ times a day, and counts how often the family gets bothered for no reason.
 Nosa's budget is deliberately non-zero, and he is the honest half of the test. His
 habits are loose enough that some days genuinely look like nothing happened. The two
 cheap ways to make his number zero are to invent structure he does not have, or to widen
-tolerances until nothing is ever noticed — so there is a test asserting he still has
+tolerances until nothing is ever noticed, so there is a test asserting he still has
 anchors, to prove the budget is met by judgement rather than by giving up.
 
 The reliability threshold does the work. An anchor absent on 12% of normal days will
@@ -441,18 +441,18 @@ Findings are generated deterministically. Bedrock then rewrites them into someth
 readable, and **its output is a proposal, not a decision.**
 
 That distinction is the whole design. A language model cannot be tested into never
-saying "she may have fallen" — prompting lowers the odds and guarantees nothing. So the
+saying "she may have fallen". Prompting lowers the odds and guarantees nothing. So the
 model's text is checked against the same rules the deterministic text already satisfies,
 and discarded in favour of that text when it fails. The safety properties therefore
 hold regardless of the model, the prompt, or a bad day.
 
 `tests/safety.test.ts` and `tests/narration.test.ts` pin the invariants. Rejected:
 
-- speculation about cause, health or injury — "no kitchen activity yet" must never
+- speculation about cause, health or injury: "no kitchen activity yet" must never
   become "she may have fallen"
 - any claim that footage was viewed
 - a message with no clock time, which has degraded into "something seems off"
-- a reference to a habit we never assessed — a model inventing a bathroom reads
+- a reference to a habit we never assessed. A model inventing a bathroom reads
   entirely plausible, which is what makes it dangerous
 - anything over 600 characters
 
@@ -468,7 +468,7 @@ Four verified findings become:
 > now 12:30. The hallway, front door, and kitchen activities are also overdue.
 
 And when Bedrock is unavailable, denied, or says something unacceptable, this goes
-instead — verified by pointing the deployment at a nonexistent model:
+instead, verified by pointing the deployment at a nonexistent model:
 
 > No first sign of activity yet today. Usually by 07:37 (allowing until 08:28), seen on
 > 30 of the last 30 working days. It is now 12:26, 238 minutes past. 3 other usual
@@ -494,7 +494,7 @@ npm run check     # typecheck + 228 tests
 **Start with `npm run demo`.** It learns Jasmine's routine from 42 days of history,
 shows an ordinary day producing silence, then walks a bad day from 08:00 (nothing
 overdue yet) through to lunchtime, and finishes on the two things that were easy to get
-wrong — the cat, and a camera that had stopped watching.
+wrong: the cat, and a camera that had stopped watching.
 
 The test suite is the same: synthetic households and fixed HMAC keys, offline, under a
 second, no network.
@@ -528,7 +528,7 @@ node scripts/smoke-web.mjs https://<your-domain>
 
 `smoke-web.mjs` checks the page and its security headers, that both API paths refuse
 requests without the code, the ambient MCP read, and six real utterances routing through
-Bedrock to the right tool — then resumes monitoring so the demo household is left as it
+Bedrock to the right tool, then resumes monitoring so the demo household is left as it
 was found.
 
 `scripts/screenshot.mjs` drives headless Chrome over CDP to produce the images in this
@@ -539,7 +539,7 @@ README, which is how the layout problems in them got found.
 One generated access code (`random_password` → Secrets Manager), accepted as
 `x-still-there-access` from the browser or `Authorization: Bearer` from an MCP client.
 Constant-time compare, fails closed, enforced on `/api/assistant`, `/api/mcp` and
-`/mcp`. CloudFront attaches nothing — the browser sends it, so a leaked page is not a
+`/mcp`. CloudFront attaches nothing. The browser sends it, so a leaked page is not a
 leaked API.
 
 This is a demo gate, not an identity system. A real deployment needs per-user auth; see
@@ -612,7 +612,7 @@ household up, and the interior/exterior distinction the entire occupancy model r
 derives from it.
 
 Which makes it quietly dangerous. Label the front-door camera as a hallway and passing
-traffic starts counting as proof the resident is awake — no error, no warning, just a
+traffic starts counting as proof the resident is awake: no error, no warning, just a
 system that has stopped working. Unmapped devices are surfaced rather than guessed at,
 and an event from a device with no zone is declined instead of being placed somewhere
 plausible.
@@ -645,7 +645,7 @@ Honest list. None of it is hidden behind a button that does nothing.
 - **Cold starts.** ~1.4 s against a 500 ms budget. One instance of provisioned
   concurrency would remove them for roughly $7 a month, which isn't worth it for a demo.
 - **Token refresh.** Access tokens last ~4 hours and refresh tokens ~30 days. An
-  expired refresh token cannot be recovered — the user must re-link, which resets the
+  expired refresh token cannot be recovered. The user must re-link, which resets the
   consent date and therefore discards the accumulated baseline. Needs a scheduled job
   before any real account is connected.
 - **Completing the account link.** `token.ts` stores tokens unclaimed and `link.ts`
@@ -653,7 +653,7 @@ Honest list. None of it is hidden behind a button that does nothing.
 - **Device discovery.** Zone mapping is seeded by script. A real setup flow would list
   an account's devices and ask which room each is in.
 - **Event History backfill**, to pull activity already recorded since consent.
-- **Escalation to imagery** — fetching one frame when a high-severity finding trips,
+- **Escalation to imagery**, fetching one frame when a high-severity finding trips,
   logged and visible to the resident. The boundary is designed; the call is not wired.
 - **Real payload captures** to replace the documented-shape fixtures in
   `tests/adapter.test.ts`.
@@ -673,7 +673,7 @@ Recorded because the corrections matter more than the guesses.
 - **There is no synthetic-device sandbox.** Private apps go Configure → Build →
   **Connect**, and Connect means authorising a real account. The Playground is a browser
   tool for trying API calls, not an event source for a registered webhook.
-- **The payload is a JSON:API envelope**, not the flat shape the first adapter assumed —
+- **The payload is a JSON:API envelope**, not the flat shape the first adapter assumed,
   which was wrong about nearly every field name. Also: two vocabularies exist and are
   handled separately. Webhooks say `motion_detected` and `button_press`; the Event
   History API says `motion` and `ding`.

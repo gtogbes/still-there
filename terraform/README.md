@@ -3,7 +3,7 @@
 Eight Lambda functions, seven of them behind an HTTP API, two DynamoDB tables, one KMS key, two
 secrets, a scheduled assessment, and an S3 + CloudFront front end for the web app.
 Region is `us-east-1`. Cost at this scale is a couple of pounds a month, nearly all of
-it the KMS key — everything else is pay-per-request and idle costs nothing.
+it the KMS key. Everything else is pay-per-request and idle costs nothing.
 
 ## Order of operations
 
@@ -67,7 +67,7 @@ possible later; the AWS-managed default forecloses both.
 
 **The web app is same-origin with the API.** CloudFront serves the page from S3 over
 OAC, and routes `/api/*` to API Gateway with caching disabled. So the browser never
-makes a cross-origin request, and API Gateway needs no CORS configuration — which
+makes a cross-origin request, and API Gateway needs no CORS configuration, which
 matters because adding CORS to `/mcp` would mean opening a server-to-server protocol
 endpoint to arbitrary browsers.
 
@@ -80,11 +80,11 @@ a way that conventional API auth cannot express:
 |---|---|
 | `POST /ring/webhook` | Ring signs the body; the handler verifies HMAC-SHA256 from `X-Signature` and returns 401 otherwise. We do not control what Ring sends, so an IAM or JWT authoriser is not an option. |
 | `POST /ring/token` | Ring calls this server-to-server with a single-use authorisation code valid for sixty seconds. The code is the credential and is worthless without our client secret. |
-| `GET /ring/link` | A user's browser arrives with a Ring-issued nonce that expires in ten minutes. Public by necessity — it is the beginning of authentication, so it cannot require it. |
+| `GET /ring/link` | A user's browser arrives with a Ring-issued nonce that expires in ten minutes. Public by necessity, since it is the beginning of authentication, so it cannot require it. |
 | `POST /mcp` | A generated access code, as `Authorization: Bearer`. Checked in the handler with a constant-time compare, failing closed. Not an API Gateway authoriser because the same code also arrives as a custom header from the browser on `/api/*`, and one check in one place is easier to reason about than two. |
 | `POST /api/mcp`, `POST /api/assistant` | The same code as `x-still-there-access`, sent by the page. CloudFront attaches nothing, so a leaked page is not a leaked API. |
 
-Both assistant and MCP routes are throttled per route as well as per stage — 1 rps on
+Both assistant and MCP routes are throttled per route as well as per stage: 1 rps on
 `/api/assistant`, because each call costs a Bedrock invocation, and 5 rps on the MCP
 routes, which only read DynamoDB.
 
@@ -119,7 +119,7 @@ With `demo_reset_enabled = true`, a schedule at 00:05 Europe/London rebuilds the
 synthetic household: six weeks of ordinary history, today's missing morning, camera
 health covering today, and then three runs of the deployed assessment to produce the
 day's messages. It deletes and rewrites the configured household, so the handler
-refuses to run unless `DEMO_RESET=enabled` — which only this variable sets. Never turn
+refuses to run unless `DEMO_RESET=enabled`, which only this variable sets. Never turn
 it on for a deployment with a real home behind it.
 
 ## Not yet here
@@ -132,14 +132,14 @@ it on for a deployment with a real home behind it.
   belong with account linking, which is also not finished.
 - Remote state. The `backend "s3"` block in `versions.tf` is commented out so a
   first apply works from a clean checkout. Local state is acceptable for one
-  operator and a liability the moment it is not — and the generated access code is
+  operator and a liability the moment it is not, and the generated access code is
   in it, which is why `*.tfstate` is gitignored.
 - A CloudFront access log bucket. The distribution does not log requests.
 
 ## Security scanning
 
 Your standards call for `checkov` or `tfsec` in CI. Neither is installed on this
-machine, so neither has been run against this configuration — worth doing before
+machine, so neither has been run against this configuration, so it is worth doing before
 this is treated as reviewed:
 
 ```bash
