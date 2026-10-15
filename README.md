@@ -635,10 +635,10 @@ plausible.
 
 ## Deployed and working
 
-Running in `us-east-1`: 118 Terraform-managed resources. An HTTP API with seven routes,
+Running in `us-east-1`, all managed by Terraform. An HTTP API with nine routes,
 eight arm64 Lambdas with a role each, two DynamoDB tables, a customer-managed KMS key,
 Secrets Manager, EventBridge Scheduler (every 15 minutes, and nightly for the demo
-reset), SNS, four alarms, and an
+reset), SNS, four alarms (they only notify anyone once `alarm_email` is set), and an
 S3 + CloudFront front end with OAC. Around £2/month, nearly all of it the KMS key.
 
 Verified against the live stack: the access gate on both paths, CSP headers, the ambient
