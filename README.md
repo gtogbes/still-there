@@ -322,6 +322,11 @@ So the concept is not novel. Four things about this delivery are:
 
 ## How it works
 
+![StillThere architecture on AWS](docs/architecture/architecture.svg)
+
+*Every AWS node is a resource in `terraform/`. Built from `docs/architecture/build.py`
+with the official AWS architecture icons; run it to regenerate after a change.*
+
 Two halves. One watches and notices; the other answers questions about what it noticed.
 
 **The watching half**, which runs whether anybody is asking or not:
