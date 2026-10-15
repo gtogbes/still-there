@@ -18,9 +18,12 @@ url="$(terraform output -raw web_url)"
 cd "$root/web"
 npm run build
 
+# friction-log* is uploaded separately for the hackathon submission; --delete
+# would otherwise remove it on every deploy.
 aws s3 sync dist/ "s3://$bucket/" \
   --delete \
   --exclude index.html \
+  --exclude "friction-log*" \
   --cache-control "public, max-age=31536000, immutable"
 
 aws s3 cp dist/index.html "s3://$bucket/index.html" \
