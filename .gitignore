@@ -24,3 +24,10 @@ src/mcp/app-html.generated.ts
 # Drafts kept locally, not published with the repo
 docs/blog/
 docs/demo-video.md
+
+# Local only: the diagram builder and its icons. Only the rendered PNG and SVG ship.
+docs/architecture/build.py
+docs/architecture/icons/
+
+# Local only: demo recording helper
+scripts/record-demo.mjs
